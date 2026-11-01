@@ -8,10 +8,12 @@
  * @module
  */
 
+import type * as calendar from "../calendar.js";
 import type * as email from "../email.js";
 import type * as geospatial from "../geospatial.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
+import type * as outreach from "../outreach.js";
 import type * as prospects from "../prospects.js";
 import type * as research from "../research.js";
 
@@ -22,10 +24,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  calendar: typeof calendar;
   email: typeof email;
   geospatial: typeof geospatial;
   http: typeof http;
   identity: typeof identity;
+  outreach: typeof outreach;
   prospects: typeof prospects;
   research: typeof research;
 }>;

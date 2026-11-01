@@ -1,3 +1,4 @@
+@import "leaflet/dist/leaflet.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -128,3 +129,57 @@
     @apply font-sans;
   }
 }
+/* Source-fidelity refinements: the supplied HTML represents Tailwind/shadcn tokens. */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(.141 .005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(.141 .005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(.141 .005 285.823);
+  --primary: oklch(.508 .118 165.612);
+  --primary-foreground: oklch(.985 0 0);
+  --muted: oklch(.967 .001 286.375);
+  --muted-foreground: oklch(.552 .016 285.938);
+  --secondary: oklch(.967 .001 286.375);
+  --secondary-foreground: oklch(.21 .006 285.885);
+  --accent: oklch(.967 .001 286.375);
+  --accent-foreground: oklch(.21 .006 285.885);
+  --border: oklch(.92 .004 286.32);
+  --input: oklch(.92 .004 286.32);
+  --ring: oklch(.508 .118 165.612);
+  --font-sans: Geist, ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+.dark {
+  --background: oklch(.141 .005 285.823);
+  --foreground: oklch(.985 0 0);
+  --card: oklch(.21 .006 285.885);
+  --card-foreground: oklch(.985 0 0);
+  --popover: oklch(.21 .006 285.885);
+  --popover-foreground: oklch(.985 0 0);
+  --primary: oklch(.765 .177 163.223);
+  --primary-foreground: oklch(.141 .005 285.823);
+  --secondary: oklch(.274 .006 286.033);
+  --secondary-foreground: oklch(.985 0 0);
+  --muted: oklch(.274 .006 286.033);
+  --muted-foreground: oklch(.705 .015 286.067);
+  --accent: oklch(.274 .006 286.033);
+  --accent-foreground: oklch(.985 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 17%);
+  --ring: oklch(.765 .177 163.223);
+}
+html, body { height:100%; overflow:hidden; -webkit-font-smoothing:antialiased; }
+.ps-app { font-family: var(--font-sans); font-size:14px; letter-spacing:-.004em; }
+.ps-glass { background:color-mix(in oklch,var(--card) 94%,transparent); border:1px solid var(--border); box-shadow:0 1px 2px rgb(0 0 0 / .035),0 12px 35px -14px rgb(0 0 0 / .22); backdrop-filter:blur(17px) saturate(1.5); -webkit-backdrop-filter:blur(17px) saturate(1.5); }
+.ps-eyebrow {font-size:10px;font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:var(--primary)}
+.ps-map-icon {background:transparent;border:0}
+.ps-map-pin {position:relative;width:42px;height:42px;display:flex;justify-content:center;align-items:center;border-radius:15px 15px 15px 4px;transform:rotate(-45deg);background:var(--primary);border:3px solid var(--card);color:var(--primary-foreground);box-shadow:0 5px 18px rgb(0 0 0 / .26);transition:scale .18s}
+.ps-map-pin strong {transform:rotate(45deg);font-size:13px;font-weight:750}
+.ps-map-pin-active{background:#121a19;color:#fff;scale:1.16;z-index:10}
+.leaflet-container {font:inherit!important;background:#eef1eb;outline:none}
+.dark .leaflet-container{filter:brightness(.8) saturate(.85)}
+.leaflet-control-attribution {font-size:9px!important;border-radius:6px 0 0 0;background:color-mix(in oklch,var(--card) 80%,transparent)!important;color:var(--muted-foreground)!important}
+.leaflet-control-attribution a{color:var(--primary)!important}
+.ps-left {transition:width .2s ease,box-shadow .2s ease}
+@media(max-width:767px){.ps-left{max-height:76dvh;box-shadow:0 -8px 30px rgb(0 0 0 / .17)}.ps-topbar{gap:5px;padding:6px}.ps-topbar .ps-glass{height:43px}.ps-app{font-size:13px}}

@@ -68,7 +68,7 @@ export const execute=mutation({args:{id:v.id("prospects"),kind:commandValidator,
  case "request_publish":status="blocked";summary="Publish blocked: no verified Dynamic App deployment";break;
  case "draft_outreach":
   const approved=await ctx.db.query("concepts").withIndex("by_prospect",q=>q.eq("prospectId",args.id)).collect();
-  if(!approved.some(c=>c.status==="approved"))throw new Error("Approve a concept first");
+  if(!approved.some(c=>c.status==="approved"&&!!c.html))throw new Error("Build and verify an approved concept first");
   stage="Outreach";status="needs_approval";
   await ctx.db.insert("outreach",{ownerId:user,prospectId:args.id,subject:"A website concept for "+p.name,body:"Hello,\n\nI prepared a website concept for "+p.name+" and would welcome your feedback.\n\nBest regards",status:"draft",updatedAt:timestamp});
   summary="Outreach draft created; nothing sent";break;
@@ -90,10 +90,20 @@ export const saveConceptPreview=mutation({args:{prospectId:v.id("prospects"),con
  const user=await owner(ctx);
  const p=await ctx.db.get(args.prospectId);const c=await ctx.db.get(args.conceptId);
  if(!p||p.ownerId!==user||!c||c.ownerId!==user||c.prospectId!==p._id)throw Error("Prospect or concept not found");
- if(c.status!=="approved"||p.stage!=="Design"||p.status==="paused"||p.status==="blocked")throw Error("Concept is not approved for preview");
+ if(c.status!=="approved"||!(["Design","Demo"] as string[]).includes(p.stage)||p.status==="paused"||p.status==="blocked")throw Error("Concept is not approved for preview");
  if(args.html.length<200||args.html.length>80000||!/^<!doctype html>/i.test(args.html)||!/[a-f0-9]{64}/.test(args.sha256)||args.sha256.length!==64)throw Error("Invalid preview artifact");
  if(c.html){if(c.sha256!==args.sha256)throw Error("Preview already built; create a new version to replace it");return c._id;}
  const now=Date.now();await ctx.db.patch(c._id,{html:args.html,sha256:args.sha256,builtAt:now,updatedAt:now});
+ await ctx.db.patch(p._id,{stage:"Demo",status:"needs_approval",updatedAt:now});
  await ctx.db.insert("activities",{ownerId:user,prospectId:p._id,kind:"agentos_preview",summary:"Static concept preview verified inside Rivet agentOS (unpublished)",timestamp:now});
  return c._id;
+}});
+
+export const update=mutation({args:{id:v.id("prospects"),name:v.optional(v.string()),trade:v.optional(v.string()),city:v.optional(v.string()),website:v.optional(v.string()),contact:v.optional(v.string()),notes:v.optional(v.string()),score:v.optional(v.number())},handler:async(ctx,a)=>{
+ const user=await owner(ctx);const p=await ctx.db.get(a.id);if(!p||p.ownerId!==user)throw Error("Prospect not found");
+ if(a.score!==undefined&&(!Number.isFinite(a.score)||a.score<0||a.score>100))throw Error("Score must be between 0 and 100");
+ for(const field of ["name","trade","city","website","contact","notes"] as const){if(a[field]!==undefined){const max=field==="notes"?4000:field==="website"?500:250;if(a[field]!.length>max)throw Error("Field too long: "+field);if(["name","city"].includes(field)&&!a[field]!.trim())throw Error("Name and city must not be blank")}}
+ const changes={...(a.name!==undefined?{name:a.name.trim()}:{}),...(a.trade!==undefined?{trade:a.trade.trim()}:{}),...(a.city!==undefined?{city:a.city.trim()}:{}),...(a.website!==undefined?{website:a.website.trim()}:{}),...(a.contact!==undefined?{contact:a.contact.trim()}:{}),...(a.notes!==undefined?{notes:a.notes}:{}),...(a.score!==undefined?{score:a.score}:{}),updatedAt:Date.now()};
+ await ctx.db.patch(a.id,changes);await ctx.db.insert("activities",{ownerId:user,prospectId:a.id,kind:"prospect_updated",summary:"Updated business record: "+p.name,timestamp:Date.now()});
+ return a.id;
 }});
