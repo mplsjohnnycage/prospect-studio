@@ -3,7 +3,7 @@ export type Stage = (typeof stages)[number];
 export type ProspectStatus = "queued" | "running" | "needs_approval" | "paused" | "blocked" | "succeeded" | "failed";
 export interface Prospect { id:string; name:string; trade:string; city:string; website:string; score:number; stage:Stage; status:ProspectStatus; notes:string; contact:string; source:string; latitude?:number; longitude?:number; createdAt:string; updatedAt:string; }
 export interface Concept {id:string; prospectId:string; variant:string; direction:string; description:string; status:"draft" | "approved"; html?:string; sha256?:string; builtAt?:number; createdAt:string; }
-export interface Activity {id:number; prospectId:string | null; kind:string; summary:string; at:string;}
+export interface Activity {id:string; prospectId:string | null; kind:string; summary:string; at:string;}
 export interface Message {id:string; prospectId:string; subject:string; body:string; status:"draft" | "approved"; createdAt:string;}
 export type CommandKind = "qualify" | "extract" | "design" | "approve_concept" | "draft_outreach" | "approve_outreach" | "request_publish" | "pause" | "resume";
 export const directions = [

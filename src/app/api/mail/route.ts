@@ -1,0 +1,1 @@
+export async function GET(){return Response.json({provider:"agentmail",connected:Boolean(process.env.AGENTMAIL_API_KEY&&process.env.AGENTMAIL_INBOX_ID),sendEnabled:false,description:"Draft preparation occurs in the local app. Provider inbox authorization required; no sending route exists."})}

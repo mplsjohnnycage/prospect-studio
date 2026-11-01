@@ -8,10 +8,12 @@
  * @module
  */
 
+import type * as assistant from "../assistant.js";
 import type * as auth from "../auth.js";
 import type * as autopilot from "../autopilot.js";
 import type * as autopilotService from "../autopilotService.js";
 import type * as calendar from "../calendar.js";
+import type * as demoSubmissions from "../demoSubmissions.js";
 import type * as email from "../email.js";
 import type * as geospatial from "../geospatial.js";
 import type * as http from "../http.js";
@@ -27,10 +29,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  assistant: typeof assistant;
   auth: typeof auth;
   autopilot: typeof autopilot;
   autopilotService: typeof autopilotService;
   calendar: typeof calendar;
+  demoSubmissions: typeof demoSubmissions;
   email: typeof email;
   geospatial: typeof geospatial;
   http: typeof http;

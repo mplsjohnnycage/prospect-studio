@@ -1,0 +1,4 @@
+export type GeoPoint={latitude:number;longitude:number};
+export function validPoint(p:GeoPoint){return Number.isFinite(p.latitude)&&Number.isFinite(p.longitude)&&Math.abs(p.latitude)<=90&&Math.abs(p.longitude)<=180}
+export function haversineKm(a:GeoPoint,b:GeoPoint){if(!validPoint(a)||!validPoint(b))throw new Error("Coordinates out of range");const rad=Math.PI/180;const dLat=(b.latitude-a.latitude)*rad,dLon=(b.longitude-a.longitude)*rad;const q=Math.sin(dLat/2)**2+Math.cos(a.latitude*rad)*Math.cos(b.latitude*rad)*Math.sin(dLon/2)**2;return 6371.0088*2*Math.asin(Math.min(1,Math.sqrt(q)))}
+export function withinRadius<T extends GeoPoint>(points:T[],center:GeoPoint,km:number):T[]{if(!validPoint(center)||!Number.isFinite(km)||km<0||km>25000)throw new Error("Invalid radius");return points.filter(p=>validPoint(p)&&haversineKm(center,p)<=km).sort((a,b)=>haversineKm(center,a)-haversineKm(center,b))}

@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useEffect,useState} from "react";
 import {Search,ShieldCheck,Sparkles,Mail,LoaderCircle,Database,ExternalLink} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
@@ -23,6 +23,26 @@ export function AutopilotPanel({onUpdated}:{onUpdated:()=>Promise<void>}){
  const [trade,setTrade]=useState("Painting"),[city,setCity]=useState("Minneapolis, MN");
  const [busy,setBusy]=useState(false),[phase,setPhase]=useState("");
  const [autoDaily,setAutoDaily]=useState(false);
+ const [scheduleSaving,setScheduleSaving]=useState(false),[scheduleLoaded,setScheduleLoaded]=useState(false);
+ useEffect(()=>{
+  const controller=new AbortController();
+  fetch("/api/autopilot?mode=schedules",{signal:controller.signal,cache:"no-store"}).then(async r=>{if(!r.ok)throw Error("Schedule lookup failed");return await r.json()}).then((data:{campaigns?:{trade:string;city:string;enabled:boolean}[]})=>{
+   if(controller.signal.aborted)return;
+   const found=data.campaigns?.find(c=>c.trade.trim().toLowerCase()===trade.trim().toLowerCase()&&c.city.trim().toLowerCase()===city.trim().toLowerCase());
+   setAutoDaily(found?.enabled===true);setScheduleLoaded(true);
+  }).catch(()=>{if(!controller.signal.aborted)setScheduleLoaded(true)});
+  return ()=>controller.abort();
+ },[trade,city]);
+ async function saveSchedule(){
+  if(!scheduleLoaded||scheduleSaving||trade.trim().length<3||city.trim().length<3)return;
+  setScheduleSaving(true);
+  try{
+   await request({mode:"schedule",trade,city,enabled:autoDaily});
+   toast.success(autoDaily?"Daily discovery enabled":"Daily discovery disabled");
+  }catch(e){toast.error(e instanceof Error?e.message:"Unable to update schedule")}
+  finally{setScheduleSaving(false)}
+ }
+
  const [rank,setRank]=useState<Rank|null>(null),[results,setResults]=useState<string[]>([]),[error,setError]=useState("");
  const [catalogOpen,setCatalogOpen]=useState(false);
  async function request(body:{mode:"discover"|"build"|"schedule";trade:string;city:string;enabled?:boolean}):Promise<Result>{
@@ -63,11 +83,11 @@ export function AutopilotPanel({onUpdated}:{onUpdated:()=>Promise<void>}){
  return <div className="grid gap-5">
   <div><h2 className="text-xl font-semibold tracking-tight">Prospect Autopilot</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Find companies, verify evidence, qualify, score and rank. Only the top 10% receive verified private demos and unsent email drafts.</p></div>
   <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-   <label className="grid gap-1.5 text-xs font-medium">Business type<Input value={trade} onChange={e=>setTrade(e.target.value)} disabled={busy} placeholder="Painting"/></label>
-   <label className="grid gap-1.5 text-xs font-medium">Target city / metro<Input value={city} onChange={e=>setCity(e.target.value)} disabled={busy} placeholder="Minneapolis, MN"/></label>
+   <label className="grid gap-1.5 text-xs font-medium">Business type<Input value={trade} onChange={e=>{setTrade(e.target.value);setScheduleLoaded(false)}} disabled={busy} placeholder="Painting"/></label>
+   <label className="grid gap-1.5 text-xs font-medium">Target city / metro<Input value={city} onChange={e=>{setCity(e.target.value);setScheduleLoaded(false)}} disabled={busy} placeholder="Minneapolis, MN"/></label>
    <Button onClick={()=>void start()} disabled={busy||trade.length<3||city.length<3}>{busy?<LoaderCircle className="size-4 animate-spin"/>:<Search className="size-4"/>}{busy?"Running…":"Run Autopilot"}</Button>
   </div>
-  <label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" className="size-4 accent-primary" checked={autoDaily} disabled={busy} onChange={e=>setAutoDaily(e.target.checked)}/><span><strong className="text-foreground">Enable daily automatic discovery</strong> at 13:00 UTC, capped at one new verified demo per daily run; Firecrawl and sandbox usage may incur costs.</span></label>
+  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-background p-3"><label className="flex min-w-[180px] flex-1 items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" aria-label="Enable daily discovery" className="size-4 accent-primary" checked={autoDaily} disabled={busy||!scheduleLoaded||scheduleSaving} onChange={e=>setAutoDaily(e.target.checked)}/><span><strong className="text-foreground">Daily discovery</strong> at 13:00 UTC · one verified demo max per daily run. Provider usage may incur costs.</span></label><Button variant="outline" size="sm" disabled={busy||scheduleSaving||!scheduleLoaded} onClick={()=>void saveSchedule()}>{scheduleSaving?"Saving…":"Save schedule"}</Button></div>
   <div className="rounded-xl border border-border bg-muted/40 px-4 py-3"><div className="flex items-center gap-2 text-xs font-semibold"><ShieldCheck className="size-4 text-primary"/> Strict top-decile policy</div><p className="mt-1 text-xs text-muted-foreground">Demo allowance = floor(qualified, non-paused prospects ÷ 10), evaluated by the backend at preparation and artifact-save time. Less than 10 qualified = zero demos.</p></div>
   {phase&&<div role="status" className="text-xs font-medium text-foreground">{busy&&<LoaderCircle className="mr-1 inline size-3 animate-spin"/>}{phase}</div>}
   {error&&<p role="alert" className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{error}</p>}

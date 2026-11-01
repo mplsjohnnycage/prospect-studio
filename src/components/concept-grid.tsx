@@ -1,11 +1,12 @@
 "use client";
-import {useEffect,useState} from "react";
-import {ArrowRight,Check,CheckCircle2,FileCode2,ChevronDown,Eye,Layers,LoaderCircle,LockKeyhole,Monitor,Play,ShieldCheck,Smartphone,ThumbsUp,TriangleAlert} from "lucide-react";
+import {useEffect,useRef,useState} from "react";
+import {ArrowRight,Check,CheckCircle2,FileCode2,ChevronDown,Eye,Layers,LoaderCircle,LockKeyhole,Monitor,Play,ShieldCheck,Smartphone,ThumbsUp} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from "@/components/ui/dialog";
 import {toast} from "sonner";
 import type {Concept,Prospect} from "@/lib/domain";
+import {shouldAcceptPreviewMessage} from "@/lib/demo-submission";
 type Props={prospect:Prospect;concepts:Concept[];busy:boolean;run:(id:string,kind:string,params?:Record<string,unknown>)=>void;refresh:()=>Promise<void>};
 type Direction="Editorial"|"Local First"|"Conversion"|"Signature";
 const styles:Record<Direction,{bg:string;fg:string;accent:string;subtle:string;intro:string;cta:string;services:string[];details:string}>={
@@ -30,12 +31,42 @@ function ConceptArtwork({business,trade,city,direction,compact=false}:{business:
 }
 export function ConceptGrid({prospect:p,concepts,busy,run,refresh}:Props){
  const [active,setActive]=useState<string|null>(null),[building,setBuilding]=useState<string|null>(null),[display,setDisplay]=useState<"desktop"|"phone">("desktop"),[modal,setModal]=useState(false);
+ const inlineFrame=useRef<HTMLIFrameElement>(null),expandedFrame=useRef<HTMLIFrameElement>(null);
+ const [previewTests,setPreviewTests]=useState<{_id:string;name:string;email:string;message:string;createdAt:number}[]>([]);
  useEffect(()=>{if(!active&&concepts.length)queueMicrotask(()=>setActive(concepts.find(c=>c.status==="approved")?.id||concepts[0].id))},[active,concepts]);
  const c=concepts.find(c=>c.id===active)||concepts[0];
  const direction=(c?.direction||"Editorial") as Direction;
  const profile=styles[direction]||styles.Editorial;
  const built=!!c?.html;
  const approved=c?.status==="approved";
+ useEffect(()=>{
+  if(!c?.html)return;
+  let active=true;
+  fetch("/api/demo-submissions?prospectId="+encodeURIComponent(p.id),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(active&&d?.submissions)setPreviewTests(d.submissions)}).catch(()=>{});
+  return()=>{active=false};
+ },[p.id,c?.html]);
+ useEffect(()=>{
+  if(!c?.html)return;
+  const onMessage=async(event:MessageEvent)=>{
+   const isInline=shouldAcceptPreviewMessage(event,inlineFrame.current?.contentWindow,p.id,c.direction);
+   const isExpanded=shouldAcceptPreviewMessage(event,expandedFrame.current?.contentWindow,p.id,c.direction);
+   if(!isInline&&!isExpanded)return;
+   let ok=false;
+   try{
+    const response=await fetch("/api/demo-submissions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prospectId:p.id,conceptId:c.id,form:event.data.form})});
+    ok=response.ok;
+    if(ok){
+     const r=await fetch("/api/demo-submissions?prospectId="+encodeURIComponent(p.id),{cache:"no-store"});
+     if(r.ok){const d=await r.json();setPreviewTests(d.submissions||[])}
+     toast.success("Private preview test saved. No email sent.");
+    }else toast.error("Preview test could not be saved");
+   }catch{toast.error("Preview test could not be saved")}
+   (event.source as Window|null)?.postMessage({type:"prospect-studio:demo-result",ok},"*");
+  };
+  window.addEventListener("message",onMessage);
+  return()=>window.removeEventListener("message",onMessage);
+ },[p.id,c?.id,c?.html,c?.direction]);
+
  async function build(){
   if(!c)return;setBuilding(c.id);
   try{
@@ -54,12 +85,12 @@ export function ConceptGrid({prospect:p,concepts,busy,run,refresh}:Props){
   <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"><div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/40 px-4 py-3"><span className="text-xs font-semibold">{c?.direction} / Visual review</span><Badge variant="secondary" className="text-[10px]">{built?"Built":"Direction"}</Badge><span className="flex-1"/><div className="flex rounded-lg border border-border bg-background p-0.5"><button title="Desktop" onClick={()=>setDisplay("desktop")} className={`grid size-8 place-items-center rounded-md ${display==="desktop"?"bg-muted shadow-sm":""}`}><Monitor size={15}/></button><button title="Phone" onClick={()=>setDisplay("phone")} className={`grid size-8 place-items-center rounded-md ${display==="phone"?"bg-muted shadow-sm":""}`}><Smartphone size={15}/></button></div></div>
    <div className="flex justify-center bg-[#e8e9e6] p-3 dark:bg-[#15181a] sm:p-5"><div className={`min-w-0 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_12px_40px_#00000016] transition-all duration-200 ${display==="phone"?"w-[320px] max-w-full":"w-full"}`}>
     <div className="flex items-center gap-1.5 border-b border-black/10 bg-[#f6f6f6] px-3 py-2"><span className="size-2 rounded-full bg-[#d8d8d8]"/><span className="size-2 rounded-full bg-[#d8d8d8]"/><span className="size-2 rounded-full bg-[#d8d8d8]"/><div className="ml-3 flex-1 rounded bg-[#e8e8e8] px-3 py-1 text-center text-[9px] text-[#777]">{built?"Verified artifact · local":"Visual specification · not deployed"}</div></div>
-    {built?<iframe title="Rivet agentOS built concept" sandbox="" srcDoc={c.html} className={`block w-full border-0 ${display==="phone"?"h-[570px]":"h-[520px]"}`}/>:<div className="h-[520px] overflow-auto"><ConceptArtwork business={p.name} trade={p.trade} city={p.city} direction={direction} compact={display==="phone"}/></div>}
+    {built?<iframe title="Verified private interactive demo" ref={inlineFrame} sandbox="allow-forms allow-scripts" srcDoc={c.html} className={`block w-full border-0 ${display==="phone"?"h-[570px]":"h-[520px]"}`}/>:<div className="h-[520px] overflow-auto"><ConceptArtwork business={p.name} trade={p.trade} city={p.city} direction={direction} compact={display==="phone"}/></div>}
    </div></div>
-   <div className="flex flex-wrap items-center gap-3 border-t border-border bg-card px-4 py-4"><div className="min-w-0 flex-1"><p className="text-[12px] font-semibold">{built?"Artifact verified by Rivet agentOS":profile.details}</p><p className="mt-1 text-[11px] text-muted-foreground">{built?`Checksum: ${c.sha256?.slice(0,18)}… · saved in Convex`:"This layout expresses the design direction; approval is required before execution."}</p></div>{built&&<Button size="sm" variant="outline" onClick={()=>setModal(true)}><Eye size={14}/> Expand</Button>}{!approved?<Button size="sm" disabled={busy||p.status==="blocked"||p.stage!=="Design"} onClick={()=>run(p.id,"approve_concept",{conceptId:c.id})}><ThumbsUp size={15}/> Approve direction</Button>:!built?<Button disabled={busy||!!building||p.status==="blocked"} size="sm" onClick={()=>void build()}>{building?<LoaderCircle size={14} className="animate-spin"/>:<Play size={14}/>} {building?"Building in agentOS…":"Build verified site"}</Button>:<Badge className="gap-1.5"><CheckCircle2 size={13}/> Approved and built</Badge>}</div>
+   <div className="flex flex-wrap items-center gap-3 border-t border-border bg-card px-4 py-4"><div className="min-w-0 flex-1"><p className="text-[12px] font-semibold">{built?"Verified interactive private demo":profile.details}</p><p className="mt-1 text-[11px] text-muted-foreground">{built?`Checksum: ${c.sha256?.slice(0,18)}… · saved in Convex`:"This layout expresses the design direction; approval is required before execution."}</p></div>{built&&<Button size="sm" variant="outline" onClick={()=>setModal(true)}><Eye size={14}/> Expand</Button>}{!approved?<Button size="sm" disabled={busy||p.status==="blocked"||p.stage!=="Design"} onClick={()=>run(p.id,"approve_concept",{conceptId:c.id})}><ThumbsUp size={15}/> Approve direction</Button>:!built?<Button disabled={busy||!!building||p.status==="blocked"} size="sm" onClick={()=>void build()}>{building?<LoaderCircle size={14} className="animate-spin"/>:<Play size={14}/>} {building?"Building in agentOS…":"Build verified site"}</Button>:<Badge className="gap-1.5"><CheckCircle2 size={13}/> Approved and built</Badge>}</div>
   </div>
  </div>
- <p className="rounded-lg border border-amber-500/20 bg-amber-500/[.055] px-4 py-3 text-[11px] leading-5 text-muted-foreground"><TriangleAlert className="mr-1 inline text-amber-600" size={13}/> This workspace builds verified static HTML, not a deployed customer-facing application. Dynamic forms, booking, hosting, and public release remain separate, gated production work.</p>
- <Dialog open={modal} onOpenChange={setModal}><DialogContent className="w-[96vw] max-w-[1150px]"><DialogHeader><DialogTitle>{p.name} — {c?.direction}</DialogTitle><DialogDescription>Verified build rendered in a sandboxed iframe · no publication</DialogDescription></DialogHeader><iframe title="Expanded verified site" sandbox="" srcDoc={c?.html||""} className="h-[70vh] w-full rounded-lg border border-border bg-white"/></DialogContent></Dialog>
+ <div className="rounded-xl border border-border bg-muted/25 p-4"><div className="flex items-center justify-between"><h3 className="text-xs font-semibold">Private form tests</h3><Badge variant="secondary">{previewTests.length} saved</Badge></div><p className="mt-1 text-[11px] leading-5 text-muted-foreground">Built demo forms can save real test records in Convex through the authenticated Studio. They cannot send emails or collect public business leads.</p>{previewTests.length>0&&<details className="mt-3"><summary className="cursor-pointer text-xs font-semibold text-primary">View test submissions</summary><div className="mt-3 max-h-52 space-y-2 overflow-y-auto">{previewTests.map(t=><div key={t._id} className="rounded-lg border border-border bg-background p-3"><div className="text-xs font-semibold">{t.name} · {t.email}</div><p className="mt-1 whitespace-pre-wrap text-[11px] text-muted-foreground">{t.message}</p><p className="mt-1 text-[10px] text-muted-foreground">{new Date(t.createdAt).toLocaleString()}</p></div>)}</div></details>}</div>
+ <Dialog open={modal} onOpenChange={setModal}><DialogContent className="w-[96vw] max-w-[1150px]"><DialogHeader><DialogTitle>{p.name} — {c?.direction}</DialogTitle><DialogDescription>Interactive private preview · test submissions saved to Convex · no publication</DialogDescription></DialogHeader><iframe title="Expanded verified site" ref={expandedFrame} sandbox="allow-forms allow-scripts" srcDoc={c?.html||""} className="h-[70vh] w-full rounded-lg border border-border bg-white"/></DialogContent></Dialog>
  </div>
 }

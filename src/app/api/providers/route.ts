@@ -1,0 +1,1 @@
+import {providerStatus} from "@/lib/integrations";export async function GET(){return Response.json(providerStatus())}

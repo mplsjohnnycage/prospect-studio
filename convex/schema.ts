@@ -4,6 +4,8 @@ import { v } from "convex/values";
 export const stage = v.union(...(["Discover","Qualify","Extract","Design","Demo","Outreach","Convert","Produce"] as const).map(v.literal));
 export const status = v.union(...(["queued","running","needs_approval","paused","blocked","succeeded","failed"] as const).map(v.literal));
 export default defineSchema({
+ assistantMessages: defineTable({ownerId:v.string(),role:v.union(v.literal("user"),v.literal("assistant")),text:v.string(),action:v.optional(v.union(v.literal("autopilot"),v.literal("inbox"),v.literal("calendar"),v.literal("studio"),v.literal("prospect"))),prospectId:v.optional(v.string()),createdAt:v.number()}).index("by_owner_time",["ownerId","createdAt"]),
+ demoSubmissions: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),conceptId:v.id("concepts"),kind:v.literal("preview_test"),name:v.string(),email:v.string(),message:v.string(),createdAt:v.number()}).index("by_owner_time",["ownerId","createdAt"]).index("by_prospect",["prospectId"]),
  campaigns: defineTable({ownerId:v.string(),key:v.string(),trade:v.string(),city:v.string(),enabled:v.boolean(),lastRunAt:v.number(),lastError:v.optional(v.string()),updatedAt:v.number()}).index("by_owner_key",["ownerId","key"]).index("by_enabled_run",["enabled","lastRunAt"]),
  prospects: defineTable({
   ownerId:v.string(),name:v.string(),trade:v.string(),city:v.string(),website:v.string(),contact:v.string(),score:v.number(),stage,status,notes:v.string(),source:v.string(),latitude:v.optional(v.number()),longitude:v.optional(v.number()),campaignKey:v.optional(v.string()),qualified:v.optional(v.boolean()),scoreReasons:v.optional(v.array(v.string())),evidence:v.optional(v.array(v.string())),updatedAt:v.number()

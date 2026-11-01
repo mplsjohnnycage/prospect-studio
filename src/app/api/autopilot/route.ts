@@ -9,7 +9,8 @@ export const maxDuration=180;
 function requestParams(url:string){const u=new URL(url);return {trade:(u.searchParams.get("trade")||"").trim(),city:(u.searchParams.get("city")||"").trim()};}
 function valid(trade:string,city:string){return trade.length>=3&&trade.length<=70&&city.length>=3&&city.length<=120;}
 export async function GET(req:Request){
- try{const {trade,city}=requestParams(req.url);if(!valid(trade,city))return Response.json({error:"Trade and city required"},{status:400});
+ try{if(new URL(req.url).searchParams.get("mode")==="schedules")return Response.json({campaigns:await getConvex().query(api.autopilot.schedules,{})});
+ const {trade,city}=requestParams(req.url);if(!valid(trade,city))return Response.json({error:"Trade and city required"},{status:400});
  const result=await getConvex().query(api.autopilot.rankedCampaign,{trade,city});
  return Response.json(result);
  }catch(e){return Response.json({error:e instanceof Error?e.message:"Unable to read ranking"},{status:400})}
