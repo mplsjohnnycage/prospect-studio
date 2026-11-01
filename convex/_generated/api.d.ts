@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as calendar from "../calendar.js";
 import type * as email from "../email.js";
 import type * as geospatial from "../geospatial.js";
@@ -24,6 +25,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   calendar: typeof calendar;
   email: typeof email;
   geospatial: typeof geospatial;
@@ -61,6 +63,7 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
+  betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
   agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
   prospectCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"prospectCounts">;

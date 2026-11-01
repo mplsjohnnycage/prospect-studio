@@ -1,8 +1,10 @@
-import {ConvexHttpClient} from "convex/browser";
-import {api} from "../../convex/_generated/api";
-export {api};
-export function getConvex(){
- const url=process.env.NEXT_PUBLIC_CONVEX_URL;
- if(!url)throw new Error("NEXT_PUBLIC_CONVEX_URL is missing");
- return new ConvexHttpClient(url);
+import { api } from "../../convex/_generated/api";
+import { fetchAuthAction, fetchAuthMutation, fetchAuthQuery } from "./auth-server";
+export { api };
+export function getConvex() {
+  return {
+    query: fetchAuthQuery,
+    mutation: fetchAuthMutation,
+    action: fetchAuthAction,
+  };
 }

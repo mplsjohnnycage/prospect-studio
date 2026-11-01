@@ -1,4 +1,5 @@
 import { defineApp } from "convex/server";
+import betterAuth from "@convex-dev/better-auth/convex.config.js";
 import {v} from "convex/values";
 import agent from "@convex-dev/agent/convex.config.js";
 import rateLimiter from "@convex-dev/rate-limiter/convex.config.js";
@@ -9,6 +10,7 @@ import firecrawl from "@firecrawl/firecrawl-convex/convex.config.js";
 import agentmail from "@agentmail/convex/convex.config.js";
 import workpool from "@convex-dev/workpool/convex.config.js";
 const app=defineApp({env:{FIRECRAWL_API_KEY:v.string(),FIRECRAWL_WEBHOOK_SECRET:v.optional(v.string())}});
+app.use(betterAuth);
 app.use(agent);
 app.use(rateLimiter);
 app.use(aggregate,{name:"prospectCounts"});
