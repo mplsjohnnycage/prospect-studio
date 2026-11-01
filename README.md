@@ -71,3 +71,24 @@ The local CLI tests previously verified create → vicinity search → qualify �
 
 ## Product and Factory boundary
 This repo is **Prospect Studio**, the outbound product. It is not the software Factory itself. Factory may later provision runtimes through explicit adapters.
+
+## Rivet agentOS execution (verified on Sprite)
+- Installed `@rivet-dev/agentos-core@0.4.6` for in-process isolated VMs and `@rivet-dev/agentos@0.4.3` as the hosted Rivet client for later cloud provisioning.
+- `prospectActor.generateConcept(input)` uses agentOS Core to render a **static template** inside an isolated VM, read and verify the generated HTML, compute a SHA-256 checksum, broadcast `concept_ready`, and persist the build metadata in Rivet actor state. No arbitrary guest command or JavaScript is accepted from clients.
+- VM networking defaults to deny, guest process count limited to 8, filesystem limit 16 MiB, and each VM is disposed at the end of the job. This is **ephemeral** execution. It does not provide durable VM identity, deployed apps, screenshots, model-generated UI, live leads, or hosted preview URLs.
+- The Rivet process runs only on the Sprite. It is **not** running as a Vercel function. Do not expose the local Rivet actor engine without per-tenant auth; the client integration currently exists for trusted server-side calls only.
+- For a durable production agentOS VM with expiring preview URLs, provision a Rivet Cloud agentOS project and configure `RIVET_NAMESPACE` and `RIVET_TOKEN` (or self-host the supported prebuilt agentOS actor). No cloud credentials are currently configured. See https://rivet.dev/agentos/docs/quickstart-hosted/ .
+- `npm run agentos:smoke` verifies a standalone VM; `npm run agentos:actor-check` verifies the Rivet actor invokes the VM.
+
+### Release security gate
+Following agentOS installation, a production-only npm audit reported **10 high, 10 moderate, 10 low** dependency findings. High findings include transitive PI agent and proxy/zip dependencies. They have **not** been remediated. An automated audit fix dry run failed due to Sprite npm's remote package fetch restriction. Do not promote this release into a public production system until dependency, auth, sandbox policies, rate limits and exposure reviews have been completed.
+
+### Vercel and Convex deployment status
+- Vercel CLI 65.9.0 installed globally and linked into `~/.local/bin/vercel` on Sprite.
+- Vercel project `prospect-studio` was created in `johnnyc` team and Vercel SSO protection enabled; frontend was not published in the absence of a reachable authenticated backend.
+- Convex is still on a local anonymous backend. A real Convex Cloud account sign-in/authorization and cloud deploy is necessary for Vercel to reach business data.
+
+### Verified Preview UI and Convex persistence
+- Studio cards show **Build static preview** for an approved concept; the protected Sprite backend calls the matching Rivet prospect actor, which executes the output template through agentOS Core. The generated HTML, checksum and build timestamp are stored on the Convex concept record; the preview is opened only through a sandboxed iframe.
+- The route `POST /api/agentos/build` is deliberately disabled unless `AGENTOS_PREVIEWS_ENABLED=1` and `RIVET_ENDPOINT=http://127.0.0.1:6420` (private Sprite only). Do not enable this route on Vercel. It only reads approved concepts from Convex, not arbitrary code/commands from clients.
+- E2E verification performed against the Sprite HTTP service: create QA record, reject early/unapproved build, advance stages, approve concept, build via agentOS actor, persist verified escaped HTML, enforce idempotency, reject publication. QA record and test cleanup mutation removed after success.

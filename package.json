@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --import tsx --test src/lib/*.test.ts"
+    "test:unit": "node --import tsx --test src/lib/*.test.ts",
+    "agentos:smoke": "node --import tsx scripts/agentos-smoke.ts",
+    "agentos:actor-check": "node --import tsx scripts/agentos-actor-test.ts"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",
@@ -19,6 +21,8 @@
     "@convex-dev/rate-limiter": "^0.4.3",
     "@convex-dev/workpool": "^0.4.15",
     "@firecrawl/firecrawl-convex": "^0.1.1",
+    "@rivet-dev/agentos": "^0.4.3",
+    "@rivet-dev/agentos-core": "^0.4.6",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.1",
     "convex": "^1.49.0",

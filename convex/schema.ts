@@ -7,7 +7,7 @@ export default defineSchema({
  prospects: defineTable({
   ownerId:v.string(),name:v.string(),trade:v.string(),city:v.string(),website:v.string(),contact:v.string(),score:v.number(),stage,status,notes:v.string(),source:v.string(),latitude:v.optional(v.number()),longitude:v.optional(v.number()),updatedAt:v.number()
  }).index("by_owner_updated",["ownerId","updatedAt"]).index("by_owner_stage",["ownerId","stage"]).searchIndex("search_name",{searchField:"name",filterFields:["ownerId"]}),
- concepts: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),variant:v.string(),direction:v.string(),description:v.string(),status:v.union(v.literal("draft"),v.literal("approved")),updatedAt:v.number()}).index("by_prospect",["prospectId"]),
+ concepts: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),variant:v.string(),direction:v.string(),description:v.string(),status:v.union(v.literal("draft"),v.literal("approved")),html:v.optional(v.string()),sha256:v.optional(v.string()),builtAt:v.optional(v.number()),updatedAt:v.number()}).index("by_prospect",["prospectId"]),
  outreach: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),subject:v.string(),body:v.string(),status:v.union(v.literal("draft"),v.literal("approved")),updatedAt:v.number()}).index("by_prospect",["prospectId"]).index("by_owner",["ownerId"]),
  activities: defineTable({ownerId:v.string(),prospectId:v.optional(v.id("prospects")),kind:v.string(),summary:v.string(),timestamp:v.number()}).index("by_owner_time",["ownerId","timestamp"]).index("by_prospect",["prospectId"]),
  commands: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),commandId:v.string(),kind:v.string(),result:v.string(),timestamp:v.number()}).index("by_command",["commandId"]),
