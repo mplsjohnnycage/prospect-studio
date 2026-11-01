@@ -21,7 +21,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       enabled: true,
       disableSignUp: process.env.OWNER_SIGNUP_ENABLED !== "1",
       requireEmailVerification: false,
-      minPasswordLength: 16,
+      minPasswordLength: 10,
     },
     databaseHooks: {
       user: {
