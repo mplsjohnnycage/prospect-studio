@@ -1,0 +1,1 @@
+import {registry} from "../lib/rivet";registry.start();console.log("Prospect Studio Rivet actor registry started");

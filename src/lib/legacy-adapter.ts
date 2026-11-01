@@ -1,0 +1,5 @@
+import type {Doc} from "../../convex/_generated/dataModel";
+export const prospect=(p:Doc<"prospects">)=>({id:p._id,name:p.name,trade:p.trade,city:p.city,website:p.website,contact:p.contact,score:p.score,stage:p.stage,status:p.status,notes:p.notes,source:p.source,createdAt:new Date(p._creationTime).toISOString(),updatedAt:new Date(p.updatedAt).toISOString(),latitude:p.latitude,longitude:p.longitude});
+export const concept=(c:Doc<"concepts">)=>({id:c._id,prospectId:c.prospectId,variant:c.variant,direction:c.direction,description:c.description,status:c.status,createdAt:new Date(c._creationTime).toISOString()});
+export const message=(m:Doc<"outreach">)=>({id:m._id,prospectId:m.prospectId,subject:m.subject,body:m.body,status:m.status,createdAt:new Date(m._creationTime).toISOString()});
+export const activity=(a:Doc<"activities">)=>({id:a._id,prospectId:a.prospectId??null,kind:a.kind,summary:a.summary,at:new Date(a.timestamp).toISOString()});

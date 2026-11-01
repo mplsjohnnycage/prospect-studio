@@ -1,0 +1,1 @@
+export const runtime="nodejs"; export async function GET(){return Response.json({ok:true,service:"prospect-studio",mode:"private-sprite-pilot",database:"convex-anonymous-local",emailSending:"disabled",publicPublishing:"disabled",time:new Date().toISOString()})}
