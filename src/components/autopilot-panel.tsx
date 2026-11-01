@@ -8,7 +8,7 @@ import {toast} from "sonner";
 type Rank={total:number;qualified:number;demoBudget:number;eligible:{id:string;name:string;score:number;stage:string;website:string}[]};
 type Result={search?:{searchHits:number;imported:number;qualified:number;creditsReported:number;skipped:number};ranking?:Rank;built?:{name:string;prospectId:string;draftCreated:boolean}[];errors?:{prospectId:string;message:string}[];remaining?:number;emailsSent:number};
 const providers=[
- ["Firecrawl","Search + scrape","Production credential installed",true],
+ ["Firecrawl","Search + scrape","Convex component installed; live discovery wired",true],
  ["TinyFish","Browser research","AgentMail account; API not wired",false],
  ["Context.dev","Secondary extraction","AgentMail account; API not wired",false],
  ["Keenable","Search cross-check","AgentMail account; API not wired",false],
@@ -16,13 +16,13 @@ const providers=[
  ["Notte","Browser verification","AgentMail account; API not wired",false],
  ["SuperSend","Outbound sequencing","AgentMail account; sending disabled",false],
  ["Retrace","Agent run observability","AgentMail account; API not wired",false],
- ["Supermemory","Research continuity","AgentMail account; API not wired",false],
+ ["Supermemory","Research continuity","API not wired; evaluate Convex component",false],
  ["Orange Slice","GTM enrichment","Not connected in AgentMail",false]
 ] as const;
 export function AutopilotPanel({onUpdated}:{onUpdated:()=>Promise<void>}){
  const [trade,setTrade]=useState("Painting"),[city,setCity]=useState("Minneapolis, MN");
  const [busy,setBusy]=useState(false),[phase,setPhase]=useState("");
- const [autoDaily,setAutoDaily]=useState(true);
+ const [autoDaily,setAutoDaily]=useState(false);
  const [rank,setRank]=useState<Rank|null>(null),[results,setResults]=useState<string[]>([]),[error,setError]=useState("");
  const [catalogOpen,setCatalogOpen]=useState(false);
  async function request(body:{mode:"discover"|"build"|"schedule";trade:string;city:string;enabled?:boolean}):Promise<Result>{
