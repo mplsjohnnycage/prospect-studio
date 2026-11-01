@@ -9,6 +9,8 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as autopilot from "../autopilot.js";
+import type * as autopilotService from "../autopilotService.js";
 import type * as calendar from "../calendar.js";
 import type * as email from "../email.js";
 import type * as geospatial from "../geospatial.js";
@@ -26,6 +28,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  autopilot: typeof autopilot;
+  autopilotService: typeof autopilotService;
   calendar: typeof calendar;
   email: typeof email;
   geospatial: typeof geospatial;

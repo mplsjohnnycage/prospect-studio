@@ -2,6 +2,7 @@ import {query,mutation} from "./_generated/server";
 import {v} from "convex/values";
 import {owner} from "./identity";
 import {geo} from "./geospatial";
+import {requireTopDecile} from "./autopilot";
 import {canTransition,directions,type CommandKind} from "../src/lib/domain";
 
 const commandValidator=v.union(...(["qualify","extract","design","approve_concept","draft_outreach","approve_outreach","request_publish","pause","resume"] as const).map(v.literal));
@@ -55,6 +56,7 @@ export const execute=mutation({args:{id:v.id("prospects"),kind:commandValidator,
  case "qualify": stage="Qualify";status="needs_approval";summary="Qualification checklist opened (manual verification required)";break;
  case "extract":stage="Extract";status="needs_approval";summary="Research stage opened; no automatic crawl performed";break;
  case "design":
+  await requireTopDecile(ctx,p);
   stage="Design";status="needs_approval";summary="Four design briefs created for review";
   const existing=await ctx.db.query("concepts").withIndex("by_prospect",q=>q.eq("prospectId",args.id)).collect();
   if(existing.length===0)for(const d of directions)await ctx.db.insert("concepts",{ownerId:user,prospectId:args.id,variant:d.variant,direction:d.direction,description:d.description,status:"draft",updatedAt:timestamp});
@@ -90,6 +92,7 @@ export const saveConceptPreview=mutation({args:{prospectId:v.id("prospects"),con
  const user=await owner(ctx);
  const p=await ctx.db.get(args.prospectId);const c=await ctx.db.get(args.conceptId);
  if(!p||p.ownerId!==user||!c||c.ownerId!==user||c.prospectId!==p._id)throw Error("Prospect or concept not found");
+ await requireTopDecile(ctx,p);
  if(c.status!=="approved"||!(["Design","Demo"] as string[]).includes(p.stage)||p.status==="paused"||p.status==="blocked")throw Error("Concept is not approved for preview");
  if(args.html.length<200||args.html.length>80000||!/^<!doctype html>/i.test(args.html)||!/[a-f0-9]{64}/.test(args.sha256)||args.sha256.length!==64)throw Error("Invalid preview artifact");
  if(c.html){if(c.sha256!==args.sha256)throw Error("Preview already built; create a new version to replace it");return c._id;}
@@ -101,6 +104,7 @@ export const saveConceptPreview=mutation({args:{prospectId:v.id("prospects"),con
 
 export const update=mutation({args:{id:v.id("prospects"),name:v.optional(v.string()),trade:v.optional(v.string()),city:v.optional(v.string()),website:v.optional(v.string()),contact:v.optional(v.string()),notes:v.optional(v.string()),score:v.optional(v.number())},handler:async(ctx,a)=>{
  const user=await owner(ctx);const p=await ctx.db.get(a.id);if(!p||p.ownerId!==user)throw Error("Prospect not found");
+ if(a.score!==undefined&&p.campaignKey)throw Error("Automatic research scores cannot be overwritten manually");
  if(a.score!==undefined&&(!Number.isFinite(a.score)||a.score<0||a.score>100))throw Error("Score must be between 0 and 100");
  for(const field of ["name","trade","city","website","contact","notes"] as const){if(a[field]!==undefined){const max=field==="notes"?4000:field==="website"?500:250;if(a[field]!.length>max)throw Error("Field too long: "+field);if(["name","city"].includes(field)&&!a[field]!.trim())throw Error("Name and city must not be blank")}}
  const changes={...(a.name!==undefined?{name:a.name.trim()}:{}),...(a.trade!==undefined?{trade:a.trade.trim()}:{}),...(a.city!==undefined?{city:a.city.trim()}:{}),...(a.website!==undefined?{website:a.website.trim()}:{}),...(a.contact!==undefined?{contact:a.contact.trim()}:{}),...(a.notes!==undefined?{notes:a.notes}:{}),...(a.score!==undefined?{score:a.score}:{}),updatedAt:Date.now()};

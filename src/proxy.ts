@@ -5,4 +5,4 @@ export async function proxy(_request: NextRequest) {
   if (!(await isAuthenticated())) return NextResponse.json({error:"Sign in required"},{status:401});
   return NextResponse.next();
 }
-export const config = { matcher: ["/api/((?!auth|health|map/tiles).*)"] };
+export const config = { matcher: ["/api/((?!auth|health|cron|map/tiles).*)"] };
