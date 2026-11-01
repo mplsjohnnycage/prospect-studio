@@ -1,3 +1,5 @@
+> **Current source of truth:** [docs/DEPLOYMENT_STATUS.md](docs/DEPLOYMENT_STATUS.md) describes the deployed Vercel app, managed Convex environments, owner auth, production gates and verified checks. Historical pilot notes below predate those changes and must not be interpreted as current deployment status.
+
 # Prospect Studio — Sprite Private Pilot
 
 This repository is the working, **private pilot** implementation of Prospect Studio v3 in Fly Sprites, not a finished production campaign system.
