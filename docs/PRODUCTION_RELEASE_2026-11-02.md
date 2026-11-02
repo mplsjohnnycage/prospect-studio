@@ -35,3 +35,7 @@ This is an additive schema change. Prior concept records require no migration. F
 6. Determine which automations the owner explicitly wants active; no implicit outreach or public publishing.
 
 The production release is not certified until each safety and business gate is proven by a real test.
+
+## CI authorization checkpoint
+
+The GitHub token currently lacks the separate `workflow` scope. GitHub rejected creation of `.github/workflows/prospect-studio-ci.yml`; the reviewed workflow is retained in `docs/prospect-studio-ci.pending.yml` for activation once the owner authorizes workflow writes. **Automated GitHub checks are not yet active.** The `scripts/release-smoke.mjs` checks have passed locally and may be run manually.
