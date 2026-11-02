@@ -62,3 +62,7 @@ Vercel CI must be explicitly enabled for the private `mplsjohnnycage/prospect-st
 - Enabled for the linked private `mplsjohnnycage/prospect-studio` repository on Vercel team `johnnyc` using `vercel ci enable --scope johnnyc --remote origin --non-interactive --json`.
 - The Vercel CLI returned `status: ok`, `ciEnabled: true`, `outcome: enabled`.
 - Trigger a new Git push, then verify the task execution and GitHub PR check using `vercel ci list`, `vercel ci inspect`, and `gh pr checks`.
+
+### Clean Vercel build TypeScript type generation
+
+An early Vercel preview exposed a clean-build typecheck error: global Next.js `LayoutProps` is produced by `next typegen`, but `npm run verify` ran TypeScript before Next.js compiled. The `typecheck` task now executes `next typegen && tsc --noEmit --incremental false`. This is required for fresh Vercel CI machines and Vercel deployment builders. Verified locally with the existing `.next` directory temporarily moved aside to reproduce a clean checkout.
