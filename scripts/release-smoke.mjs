@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 
 const base=process.env.PROSPECT_SMOKE_URL||"http://127.0.0.1:3111";
+const expectReady=process.env.PROSPECT_EXPECT_READY==="1";
 const checks=[
  {name:"application shell",path:"/",method:"GET",status:200},
  {name:"liveness",path:"/api/health",method:"GET",status:200,json:{ok:true,service:"prospect-studio"}},
+ {name:"backend readiness reports actual availability",path:"/api/ready",method:"GET",status:expectReady?200:503,json:{ok:expectReady}},
  {name:"anonymous prospects are private",path:"/api/prospects",method:"GET",status:401,json:{error:"Sign in required"}},
  {name:"anonymous mutations are private",path:"/api/autopilot",method:"POST",status:401,body:{mode:"build",trade:"Painting",city:"Minneapolis"}},
  {name:"anonymous sandbox builds are private",path:"/api/agentos/build",method:"POST",status:401,body:{prospectId:"invalid",conceptId:"invalid"}},

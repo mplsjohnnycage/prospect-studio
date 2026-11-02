@@ -16,6 +16,7 @@ import type * as calendar from "../calendar.js";
 import type * as demoSubmissions from "../demoSubmissions.js";
 import type * as email from "../email.js";
 import type * as geospatial from "../geospatial.js";
+import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
 import type * as outreach from "../outreach.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   demoSubmissions: typeof demoSubmissions;
   email: typeof email;
   geospatial: typeof geospatial;
+  health: typeof health;
   http: typeof http;
   identity: typeof identity;
   outreach: typeof outreach;

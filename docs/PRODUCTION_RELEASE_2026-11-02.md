@@ -39,3 +39,10 @@ The production release is not certified until each safety and business gate is p
 ## CI authorization checkpoint
 
 The GitHub token currently lacks the separate `workflow` scope. GitHub rejected creation of `.github/workflows/prospect-studio-ci.yml`; the reviewed workflow is retained in `docs/prospect-studio-ci.pending.yml` for activation once the owner authorizes workflow writes. **Automated GitHub checks are not yet active.** The `scripts/release-smoke.mjs` checks have passed locally and may be run manually.
+
+## Nov 2 follow-up — Git identity and backend readiness
+
+- Vercel `johnnyc` team membership shows a single OWNER, connected to GitHub `mplsjohnnycage`. Earlier PR commits used the different GitHub identity `johnnyc-9164` and Vercel blocked automatic builds. Repository-local Git author identity is now aligned to `mplsjohnnycage` for new commits; historical commits were not rewritten. Confirm a fresh Git-triggered Vercel build before declaring the integration repaired.
+- `/api/health` remains a cheap liveness endpoint; `/api/ready` now performs a real Convex cloud query and returns 503 if the remote data backend is missing or unreachable. No tenant data is returned by the probe.
+- The new Convex `health.ping` query is data-free and is deployed to Convex **development**; it has not been deployed to production.
+- Run `PROSPECT_EXPECT_READY=1 PROSPECT_SMOKE_URL=<APP_URL> node scripts/release-smoke.mjs` to require backend readiness (use the protected Vercel CLI transport for SSO URLs). CI uses `PROSPECT_EXPECT_READY=0` and an intentionally nonfunctional backend to verify fail-closed behavior.

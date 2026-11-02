@@ -19,6 +19,7 @@ jobs:
       NEXT_PUBLIC_CONVEX_SITE_URL: https://placeholder.convex.site
       CRON_SECRET: ""
       SANDBOX_PREVIEWS_ENABLED: "0"
+      PROSPECT_EXPECT_READY: "0"
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
