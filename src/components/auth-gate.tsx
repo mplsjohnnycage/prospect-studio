@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { ShieldCheck, LoaderCircle, LogOut } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const currentUser = useQuery(api.auth.currentUser, isAuthenticated ? {} : "skip");
   const [password, setPassword] = useState("");
   const [activationCode, setActivationCode] = useState("");
   const [activate, setActivate] = useState(false);
@@ -17,7 +19,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState("");
 
   if (isLoading) return <div className="grid min-h-dvh place-items-center bg-background"><LoaderCircle className="size-7 animate-spin text-primary" aria-label="Verifying session"/></div>;
-  if (isAuthenticated) return <>
+  if (isAuthenticated && currentUser === undefined) return <div className="grid min-h-dvh place-items-center bg-background"><LoaderCircle className="size-7 animate-spin text-primary" aria-label="Checking workspace permissions"/></div>;
+  if (isAuthenticated && !currentUser?.isOwner) return <main className="grid min-h-dvh place-items-center bg-background px-5 text-foreground"><section className="w-full max-w-md space-y-3 rounded-2xl border border-border bg-card p-8 shadow-xl"><ShieldCheck className="size-7 text-primary"/><h1 className="text-xl font-semibold">Agent account authenticated</h1><p className="text-sm text-muted-foreground">This AgentID identity is a non-owner AgentMail account. The owner workspace and its surfaces are not available to agent accounts.</p><Button className="w-full" variant="outline" onClick={() => void authClient.signOut()}><LogOut className="mr-2 size-4"/> Sign out</Button></section></main>;
+  if (isAuthenticated && currentUser?.isOwner) return <>
     {children}
     <button className="fixed bottom-2 right-2 z-[1000] rounded-lg border border-border bg-background/85 px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur hover:text-foreground" onClick={() => void authClient.signOut()} title="Sign out of Prospect Studio">
       <LogOut className="mr-1 inline size-3"/> Sign out
@@ -62,6 +66,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           setGoogleBusy(false);
         }
       }}>{googleBusy?"Redirecting to Google…":"Sign in with Google"}</Button>
+      {!activate && <Button type="button" variant="outline" className="w-full" disabled={busy||googleBusy} onClick={async () => {
+        setBusy(true); setError("");
+        try {
+          const result = await authClient.signIn.oauth2({ providerId: "agentid", callbackURL: window.location.origin });
+          if (result.error) setError(result.error.message ?? "AgentID sign-in failed");
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "AgentID sign-in failed");
+        } finally { setBusy(false); }
+      }}>Sign in with AgentID</Button>}
       <button type="button" className="w-full text-center text-xs text-primary underline-offset-4 hover:underline" onClick={()=>{setActivate(v=>!v);setError("");setPassword("");}}>{activate?"Back to sign in":"First time? Activate with AgentMail code"}</button>
       <p className="text-[11px] leading-5 text-muted-foreground">The workspace uses per-user Convex authentication. Public requests cannot access records, even with the deployment URL.</p>
     </form>

@@ -1,11 +1,13 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth/minimal";
+import { genericOAuth } from "better-auth/plugins";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
-import { canActivateOwner, canRegisterOwnerSocial } from "../src/lib/owner-auth-policy";
+import { canActivateOwner, canRegisterOwnerSocial, isAllowedAgentAccount } from "../src/lib/owner-auth-policy";
+import { createAgentIdProviderConfig, isOwnerAccount } from "../src/lib/agentid-auth";
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
@@ -13,9 +15,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
   const siteUrl = process.env.SITE_URL;
   const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
   if (!siteUrl || !ownerEmail) throw new Error("Missing site URL or owner allowlist");
-  // Google sign-in activates only when BOTH OAuth env vars are present; a
-  // half-set pair is an operator error and must fail loudly, never silently
-  // register a broken provider. With neither set, password auth is untouched.
+
+  // Google sign-in activates only when BOTH OAuth env vars are present.
   const googleOAuth = {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientKey: process.env.GOOGLE_CLIENT_SECRET,
@@ -23,10 +24,19 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
   if (!googleOAuth.clientId !== !googleOAuth.clientKey) {
     throw new Error("Google sign-in requires both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (only one is set)");
   }
+
+  const agentIdProvider = createAgentIdProviderConfig({
+    AGENTID_CLIENT_ID: process.env.AGENTID_CLIENT_ID,
+    AGENTID_CLIENT_SECRET: process.env.AGENTID_CLIENT_SECRET,
+    AGENTID_ISSUER: process.env.AGENTID_ISSUER,
+  });
+
   return betterAuth({
     baseURL: siteUrl,
     trustedOrigins: [siteUrl],
     database: authComponent.adapter(ctx),
+    // AgentID must never implicitly attach to an existing owner identity.
+    account: { accountLinking: { enabled: false } },
     ...(googleOAuth.clientId && googleOAuth.clientKey
       ? {
           socialProviders: {
@@ -46,17 +56,20 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     databaseHooks: {
       user: {
         create: {
-          before: async (user, ctx) => {
+          before: async (user, hookContext) => {
             if (canActivateOwner(user.email ?? "", user.name ?? "", ownerEmail, process.env.OWNER_ACTIVATION_CODE ?? "")) {
               return { data: { ...user, name: "MPLS Johnny Cage" } };
             }
-            // OAuth sign-up (e.g. Google): a provider profile name never
-            // carries the activation code, so the code path above always
-            // misses. Allow only a provider-callback creation whose
-            // provider-verified email exactly equals the owner email or one
-            // of the extra owner addresses in OWNER_SOCIAL_EXTRA_EMAILS
-            // (comma-separated; holds the owner's Google identity).
-            const viaOAuthCallback = typeof ctx?.path === "string" && ctx.path.startsWith("/callback");
+
+            const callbackPath = typeof hookContext?.path === "string" ? hookContext.path : "";
+            const isAgentIdCallback = /(?:^|\/)oauth2\/callback\/agentid(?:$|\?)/i.test(callbackPath)
+              || /(?:^|\/)callback\/agentid(?:$|\?)/i.test(callbackPath);
+            if (isAgentIdCallback && isAllowedAgentAccount(user)) {
+              return { data: { ...user, name: "AgentID Agent" } };
+            }
+
+            // Google/social enrollment remains limited to verified owner addresses.
+            const viaOAuthCallback = callbackPath.startsWith("/callback") || callbackPath.includes("/callback/");
             const extraSocialEmails = (process.env.OWNER_SOCIAL_EXTRA_EMAILS ?? "")
               .split(",")
               .map((email) => email.trim().toLowerCase())
@@ -69,7 +82,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         },
       },
     },
-    plugins: [convex({ authConfig })],
+    plugins: [
+      convex({ authConfig }),
+      ...(agentIdProvider ? [genericOAuth({ config: [agentIdProvider] })] : []),
+    ],
   });
 };
 
@@ -77,6 +93,20 @@ export const currentUser = query({
   args: {},
   handler: async (ctx) => {
     const u = await authComponent.getAuthUser(ctx);
-    return u ? { id: u._id, email: u.email, name: u.name } : null;
+    if (!u) return null;
+    const linkedAccounts = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "account",
+      where: [{ field: "userId", value: u._id }],
+      paginationOpts: { numItems: 20, cursor: null },
+    });
+    const providerIds = linkedAccounts.page.map((account: { providerId?: string }) => String(account.providerId ?? ""));
+    const ownerEmail = process.env.OWNER_EMAIL ?? "";
+    return {
+      id: u._id,
+      email: u.email,
+      name: u.name,
+      isOwner: isOwnerAccount(u, providerIds, ownerEmail),
+      isAgent: providerIds.includes("agentid"),
+    };
   },
 });

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canActivateOwner, canRegisterOwnerSocial } from "./owner-auth-policy";
+import { canActivateOwner, canRegisterOwnerSocial, isAllowedAgentAccount } from "./owner-auth-policy";
 
 test("owner activation requires matching email and independent enrollment code",()=>{
  assert.equal(canActivateOwner("johnnyc@agentmail.to","abc123","johnnyc@agentmail.to","abc123"),true);
@@ -32,4 +32,11 @@ test("owner social registration allows only the listed extra owner addresses",()
  // Without the extras list, the Google identity does not qualify.
  assert.equal(canRegisterOwnerSocial("mplsjohnnycage@makeithappenentllc.com",true,owner),false);
  assert.equal(canRegisterOwnerSocial("mplsjohnnycage@makeithappenentllc.com",true,owner,[]),false);
+});
+
+test("verified AgentID AgentMail identities are admitted only as non-owner accounts",()=>{
+ assert.equal(isAllowedAgentAccount({email:"bot@agentmail.to",emailVerified:true,name:"AgentID Agent"}),true);
+ assert.equal(isAllowedAgentAccount({email:"bot@example.com",emailVerified:true,name:"AgentID Agent"}),false);
+ assert.equal(isAllowedAgentAccount({email:"bot@agentmail.to",emailVerified:false,name:"AgentID Agent"}),false);
+ assert.equal(isAllowedAgentAccount({email:"owner@agentmail.to",emailVerified:true,name:"MPLS Johnny Cage"}),false);
 });
