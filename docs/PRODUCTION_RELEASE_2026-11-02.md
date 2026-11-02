@@ -14,7 +14,7 @@ Problem: two concurrent requests could both provision a Vercel Sandbox for one c
 
 Change: the Convex concepts table now holds optional `buildClaimId` and `buildLeaseUntil`. A serializable Convex mutation grants a four-minute lease to at most one unbuilt approved concept. Manual concept builds, owner-initiated Autopilot, and cron/service Autopilot must acquire a claim before executing a sandbox. A second request reports already-building without provisioning another sandbox. Saving a fresh artifact requires the unexpired matching claim; successful saves clear it. Failed requests attempt release, and abandoned claims expire. An old requester cannot release or overwrite a newer claim.
 
-This is an additive schema change. Prior concept records require no migration. The contract does not modify the actual generated HTML or relax existing top-decile, owner, or concept-approval gates.
+This is an additive schema change. Prior concept records require no migration. For safe backend-first rollout, existing Vercel callers may temporarily omit the claim ID when no active claim exists; once the new Vercel code is live, all three build paths supply it. An old caller cannot overwrite an active new claim. The contract does not modify the actual generated HTML or relax existing top-decile, owner, or concept-approval gates.
 
 ## Verification and release gates
 

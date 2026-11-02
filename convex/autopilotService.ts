@@ -20,10 +20,10 @@ export const runDaily=action({args:{token:v.string()},returns:v.any(),handler:as
   throw e;
  }
 }});
-export const prepare=action({args:{token:v.string(),prospectId:v.id("prospects"),claimId:v.string()},returns:v.any(),handler:async(ctx,a):Promise<Prepared>=>{
+export const prepare=action({args:{token:v.string(),prospectId:v.id("prospects"),claimId:v.optional(v.string())},returns:v.any(),handler:async(ctx,a):Promise<Prepared>=>{
  authorize(a.token);return await ctx.runMutation(internal.autopilot.prepareForService,{prospectId:a.prospectId,claimId:a.claimId});
 }});
-export const saveAndDraft=action({args:{token:v.string(),prospectId:v.id("prospects"),conceptId:v.id("concepts"),html:v.string(),sha256:v.string(),claimId:v.string()},returns:v.any(),handler:async(ctx,a):Promise<Drafted>=>{
+export const saveAndDraft=action({args:{token:v.string(),prospectId:v.id("prospects"),conceptId:v.id("concepts"),html:v.string(),sha256:v.string(),claimId:v.optional(v.string())},returns:v.any(),handler:async(ctx,a):Promise<Drafted>=>{
  authorize(a.token);
  await ctx.runMutation(internal.autopilot.saveForService,{prospectId:a.prospectId,conceptId:a.conceptId,html:a.html,sha256:a.sha256,claimId:a.claimId});
  return await ctx.runMutation(internal.autopilot.draftForService,{prospectId:a.prospectId});

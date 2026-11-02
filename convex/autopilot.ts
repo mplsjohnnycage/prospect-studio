@@ -101,7 +101,7 @@ export const discoverInternal=internalAction({
  handler:async(ctx,a)=>{if(!process.env.AUTOPILOT_SERVICE_SECRET)throw Error("Autopilot not configured");return await discoveryCore(ctx,a.ownerId,a.trade,a.city)}
 });
 export const prepareDemo=mutation({
- args:{prospectId:v.id("prospects"),claimId:v.string()},
+ args:{prospectId:v.id("prospects"),claimId:v.optional(v.string())},
  returns:v.object({prospectId:v.id("prospects"),conceptId:v.id("concepts"),alreadyBuilt:v.boolean(),buildStatus:v.union(v.literal("built"),v.literal("busy"),v.literal("acquired"))}),
  handler:async(ctx,a)=>{
   const user=await owner(ctx);const p=await ctx.db.get(a.prospectId);
@@ -121,10 +121,10 @@ export const prepareDemo=mutation({
   }
   if(!approved)throw Error("No concept available");
   if(!approved.html)await ctx.db.patch(p._id,{stage:"Design",status:"needs_approval",updatedAt:Date.now()});
-  validateBuildClaimId(a.claimId);
+  if(a.claimId)validateBuildClaimId(a.claimId);
   if(["blocked","paused"].includes(p.status))throw Error("Prospect is paused or blocked");
-  const now=Date.now(),buildStatus=decideBuildClaim(approved,now);
-  if(buildStatus==="acquired")await ctx.db.patch(approved._id,{buildClaimId:a.claimId,buildLeaseUntil:now+BUILD_LEASE_MS});
+  const now=Date.now(),buildStatus=a.claimId?decideBuildClaim(approved,now):(approved.html?"built":"acquired");
+  if(a.claimId&&buildStatus==="acquired")await ctx.db.patch(approved._id,{buildClaimId:a.claimId,buildLeaseUntil:now+BUILD_LEASE_MS});
   return {prospectId:p._id,conceptId:approved._id,alreadyBuilt:Boolean(approved.html),buildStatus};
  }
 });
@@ -180,7 +180,7 @@ export const rankForService=internalQuery({
  }
 });
 export const prepareForService=internalMutation({
- args:{prospectId:v.id("prospects"),claimId:v.string()},returns:v.any(),
+ args:{prospectId:v.id("prospects"),claimId:v.optional(v.string())},returns:v.any(),
  handler:async(ctx,a)=>{
   const p=await ctx.db.get(a.prospectId);
   if(!p)throw Error("Prospect not found");
@@ -200,14 +200,14 @@ export const prepareForService=internalMutation({
   }
   if(!selected)throw Error("No concept generated");
   if(!selected.html)await ctx.db.patch(p._id,{stage:"Design",status:"needs_approval",updatedAt:Date.now()});
-  validateBuildClaimId(a.claimId);
-  const now=Date.now(),buildStatus=decideBuildClaim(selected,now);
-  if(buildStatus==="acquired")await ctx.db.patch(selected._id,{buildClaimId:a.claimId,buildLeaseUntil:now+BUILD_LEASE_MS});
+  if(a.claimId)validateBuildClaimId(a.claimId);
+  const now=Date.now(),buildStatus=a.claimId?decideBuildClaim(selected,now):(selected.html?"built":"acquired");
+  if(a.claimId&&buildStatus==="acquired")await ctx.db.patch(selected._id,{buildClaimId:a.claimId,buildLeaseUntil:now+BUILD_LEASE_MS});
   return {prospectId:p._id,conceptId:selected._id,alreadyBuilt:Boolean(selected.html),buildStatus,name:p.name,trade:p.trade,city:p.city,direction:selected.direction};
  }
 });
 export const saveForService=internalMutation({
- args:{prospectId:v.id("prospects"),conceptId:v.id("concepts"),html:v.string(),sha256:v.string(),claimId:v.string()},returns:v.boolean(),
+ args:{prospectId:v.id("prospects"),conceptId:v.id("concepts"),html:v.string(),sha256:v.string(),claimId:v.optional(v.string())},returns:v.boolean(),
  handler:async(ctx,a)=>{
   const p=await ctx.db.get(a.prospectId),c=await ctx.db.get(a.conceptId);
   if(!p||!c||c.ownerId!==p.ownerId||c.prospectId!==p._id)throw Error("Invalid concept");
@@ -215,7 +215,7 @@ export const saveForService=internalMutation({
   if(c.status!=="approved"||!["Design","Demo"].includes(p.stage)||["blocked","paused"].includes(p.status))throw Error("Concept not buildable");
   if(a.html.length<200||a.html.length>80000||!a.html.toLowerCase().startsWith("<!doctype html>")||!/^[a-f0-9]{64}$/.test(a.sha256))throw Error("Invalid verified artifact");
   if(c.html)return c.sha256===a.sha256;
-  requireBuildClaim(c,a.claimId,Date.now());
+  if(c.buildClaimId||a.claimId)requireBuildClaim(c,a.claimId??"",Date.now());
   await ctx.db.patch(c._id,{html:a.html,sha256:a.sha256,builtAt:Date.now(),buildClaimId:undefined,buildLeaseUntil:undefined,updatedAt:Date.now()});
   await ctx.db.patch(p._id,{stage:"Demo",status:"needs_approval",updatedAt:Date.now()});
   await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"sandbox_demo",summary:"Top-decile private demo verified in an isolated Vercel Sandbox",timestamp:Date.now()});

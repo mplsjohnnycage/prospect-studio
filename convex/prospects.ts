@@ -116,7 +116,7 @@ export const releaseConceptBuild=mutation({
  }
 });
 
-export const saveConceptPreview=mutation({args:{prospectId:v.id("prospects"),conceptId:v.id("concepts"),html:v.string(),sha256:v.string(),claimId:v.string()},handler:async(ctx,args)=>{
+export const saveConceptPreview=mutation({args:{prospectId:v.id("prospects"),conceptId:v.id("concepts"),html:v.string(),sha256:v.string(),claimId:v.optional(v.string())},handler:async(ctx,args)=>{
  const user=await owner(ctx);
  const p=await ctx.db.get(args.prospectId);const c=await ctx.db.get(args.conceptId);
  if(!p||p.ownerId!==user||!c||c.ownerId!==user||c.prospectId!==p._id)throw Error("Prospect or concept not found");
@@ -124,7 +124,7 @@ export const saveConceptPreview=mutation({args:{prospectId:v.id("prospects"),con
  if(c.status!=="approved"||!(["Design","Demo"] as string[]).includes(p.stage)||p.status==="paused"||p.status==="blocked")throw Error("Concept is not approved for preview");
  if(args.html.length<200||args.html.length>80000||!/^<!doctype html>/i.test(args.html)||!/[a-f0-9]{64}/.test(args.sha256)||args.sha256.length!==64)throw Error("Invalid preview artifact");
  if(c.html){if(c.sha256!==args.sha256)throw Error("Preview already built; create a new version to replace it");return c._id;}
- requireBuildClaim(c,args.claimId,Date.now());
+ if(c.buildClaimId||args.claimId)requireBuildClaim(c,args.claimId??"",Date.now());
  const now=Date.now();await ctx.db.patch(c._id,{html:args.html,sha256:args.sha256,builtAt:now,buildClaimId:undefined,buildLeaseUntil:undefined,updatedAt:now});
  await ctx.db.patch(p._id,{stage:"Demo",status:"needs_approval",updatedAt:now});
  await ctx.db.insert("activities",{ownerId:user,prospectId:p._id,kind:"agentos_preview",summary:"Static concept preview verified inside Rivet agentOS (unpublished)",timestamp:now});
