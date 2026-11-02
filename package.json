@@ -4,13 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run verify && next build",
     "start": "next start",
     "lint": "eslint",
     "test:unit": "node --import tsx --test src/lib/*.test.ts",
     "agentos:smoke": "node --import tsx scripts/agentos-smoke.ts",
     "agentos:actor-check": "node --import tsx scripts/agentos-actor-test.ts",
-    "pi:readiness": "node --import tsx scripts/pi-durable-readiness.mts"
+    "pi:readiness": "node --import tsx scripts/pi-durable-readiness.mts",
+    "verify": "npm run test:unit && npm run lint && tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",

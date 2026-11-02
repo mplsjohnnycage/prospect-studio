@@ -46,3 +46,7 @@ The GitHub token currently lacks the separate `workflow` scope. GitHub rejected 
 - `/api/health` remains a cheap liveness endpoint; `/api/ready` now performs a real Convex cloud query and returns 503 if the remote data backend is missing or unreachable. No tenant data is returned by the probe.
 - The new Convex `health.ping` query is data-free and is deployed to Convex **development**; it has not been deployed to production.
 - Run `PROSPECT_EXPECT_READY=1 PROSPECT_SMOKE_URL=<APP_URL> node scripts/release-smoke.mjs` to require backend readiness (use the protected Vercel CLI transport for SSO URLs). CI uses `PROSPECT_EXPECT_READY=0` and an intentionally nonfunctional backend to verify fail-closed behavior.
+
+## Vercel-native build quality gate
+
+GitHub `workflow` scope remains unavailable, so the pending GitHub Actions workflow cannot yet be installed. As an enforceable alternative, `npm run build` now performs the unit suite, lint and TypeScript typechecking before the Next.js production compilation. Since the Git-linked Vercel project uses the repository's build script, any regression blocks an automatic deployment even without GitHub Actions. Keep the pending workflow for additional HTTP smoke tests and PR checks once the token scope is authorized.
