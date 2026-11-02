@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as agentTools from "../agentTools.js";
 import type * as assistant from "../assistant.js";
 import type * as auth from "../auth.js";
 import type * as autopilot from "../autopilot.js";
@@ -21,6 +22,8 @@ import type * as geospatial from "../geospatial.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
+import type * as imports from "../imports.js";
+import type * as mcp from "../mcp.js";
 import type * as outreach from "../outreach.js";
 import type * as prospects from "../prospects.js";
 import type * as research from "../research.js";
@@ -34,6 +37,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agentTools: typeof agentTools;
   assistant: typeof assistant;
   auth: typeof auth;
   autopilot: typeof autopilot;
@@ -47,6 +51,8 @@ declare const fullApi: ApiFromModules<{
   health: typeof health;
   http: typeof http;
   identity: typeof identity;
+  imports: typeof imports;
+  mcp: typeof mcp;
   outreach: typeof outreach;
   prospects: typeof prospects;
   research: typeof research;
@@ -90,4 +96,5 @@ export declare const components: {
   firecrawl: import("@firecrawl/firecrawl-convex/_generated/component.js").ComponentApi<"firecrawl">;
   agentmail: import("@agentmail/convex/_generated/component.js").ComponentApi<"agentmail">;
   researchPool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"researchPool">;
+  mcp: import("@convex-dev/mcp/_generated/component.js").ComponentApi<"mcp">;
 };

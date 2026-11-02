@@ -22,6 +22,7 @@
     "@convex-dev/aggregate": "^0.3.4",
     "@convex-dev/better-auth": "^0.12.6",
     "@convex-dev/geospatial": "^0.2.1",
+    "@convex-dev/mcp": "0.1.0-alpha.7",
     "@convex-dev/rate-limiter": "^0.4.3",
     "@convex-dev/workpool": "^0.4.15",
     "@earendil-works/chord": "^1.4.0",

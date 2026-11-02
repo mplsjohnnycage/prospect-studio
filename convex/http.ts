@@ -3,8 +3,11 @@ import {httpAction} from "./_generated/server";
 import {AgentMail} from "@agentmail/convex";
 import {components,internal} from "./_generated/api";
 import { authComponent,createAuth } from "./auth";
+import {mcp} from "./mcp";
 const http=httpRouter();
 authComponent.registerRoutesLazy(http,createAuth);
+// MCP endpoint (/mcp) and its OAuth discovery routes for outside agents.
+mcp.registerRoutes(http);
 const agentmail=new AgentMail(components.agentmail);
 http.route({path:"/agentmail/webhook",method:"POST",handler:httpAction(async(ctx,request)=>agentmail.handleWebhook(ctx as unknown as Parameters<typeof agentmail.handleWebhook>[0],request))});
 // Public, unguessable demo links for prospects. Sandboxed so demo code cannot reach this origin.

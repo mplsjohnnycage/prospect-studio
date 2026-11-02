@@ -73,3 +73,11 @@ vercel git connect --yes
 5. Decide on public sharing only after security, budget/quotas and tenant data checks. Keep SSO enabled until then.
 
 Do not conflate Prospect Studio with the separate Factory project.
+
+## Agent, MCP and imports (added 2026-11-02)
+
+- **In-app agent** (`convex/assistant.ts` `chat`, `src/components/agent-panel.tsx`): Gemini function-calling loop (`src/lib/agent-loop.ts`) over the shared tools in `convex/agentTools.ts`. Opens from the **Agent** button in the top bar. Conversation is stored in `assistantMessages` with the tool steps. Models: `AGENT_MODELS` env (comma list) then gemini-3.5-flash, gemini-flash-latest, gemini-3.8-flash.
+- **MCP server** (`convex/mcp.ts`, `@convex-dev/mcp` 0.1.0-alpha.7): `https://<deployment>.convex.site/mcp`. OAuth 2.1 with the consent page at `SITE_URL/connect` (framing blocked), device flow for pasted-URL agents, and personal API keys from **Settings → Outside agents**. Scopes: `pipeline:read`, `pipeline:write`.
+- **Tools (same for both):** pipeline_summary, find_prospects, get_prospect, list_replies, add_prospect, find_new_businesses (background), research_prospect, build_demo (background), get_demo_link, draft_first_email, draft_reply, import_prospects, add_to_do_not_contact. **No tool approves or sends email, sends replies, or marks deals won/lost.** Every tool acts as the verified owner; model-supplied ids are checked against that owner.
+- **Imports** (`convex/imports.ts`, `src/lib/prospect-import.ts`, `src/components/import-panel.tsx`): CSV/TSV/JSON/JSONL from Apify Google Maps, Outscraper, extensions or spreadsheets. Dedupe by website and name+city, do-not-contact check, simple fit score (no website, reviews, rating, contact). A listing URL becomes a source so demos can use the imported facts.
+- Verified on Convex dev with a test owner: MCP initialize, tools/list (13 tools), pipeline_summary, find_prospects, get_prospect, cross-owner/invalid id rejected, import with dedupe; in-app agent multi-step (find → get → build_demo).

@@ -25,25 +25,26 @@ export const list=query({
 export const add=mutation({
  args:{value:v.string(),reason:v.optional(v.string())},
  returns:v.object({added:v.boolean(),kind:v.string(),value:v.string(),blockedProspects:v.number()}),
- handler:async(ctx,a)=>{
-  const user=await owner(ctx);
-  const entry=normalizeSuppression(a.value);
-  if(!entry)throw Error("Enter a valid email address, domain or website");
-  const existing=await ctx.db.query("suppressions").withIndex("by_owner_value",q=>q.eq("ownerId",user).eq("value",entry.value)).first();
-  const now=Date.now();
-  if(!existing)await ctx.db.insert("suppressions",{ownerId:user,kind:entry.kind,value:entry.value,reason:(a.reason??"").slice(0,300)||undefined,createdAt:now});
-  // Block every matching prospect so no pipeline path (ranking, demos, drafts) touches them.
-  const prospects=await ctx.db.query("prospects").withIndex("by_owner_updated",q=>q.eq("ownerId",user)).take(1000);
-  let blocked=0;
-  for(const p of prospects){
-   if(p.status==="blocked"||!isSuppressed({contact:p.contact,website:p.website},[entry]))continue;
-   await ctx.db.patch(p._id,{status:"blocked",updatedAt:now});
-   await ctx.db.insert("activities",{ownerId:user,prospectId:p._id,kind:"do_not_contact",summary:"Added to the do-not-contact list ("+entry.value+"); prospect blocked",timestamp:now});
-   blocked++;
-  }
-  return {added:!existing,kind:entry.kind,value:entry.value,blockedProspects:blocked};
- }
+ handler:async(ctx,a)=>addSuppressionFor(ctx,await owner(ctx),a.value,a.reason)
 });
+/** Adds a do-not-contact entry and blocks matching prospects. Used by the UI and the agent tools. */
+export async function addSuppressionFor(ctx:MutationCtx,user:string,value:string,reason?:string){
+ const entry=normalizeSuppression(value);
+ if(!entry)throw Error("Enter a valid email address, domain or website");
+ const existing=await ctx.db.query("suppressions").withIndex("by_owner_value",q=>q.eq("ownerId",user).eq("value",entry.value)).first();
+ const now=Date.now();
+ if(!existing)await ctx.db.insert("suppressions",{ownerId:user,kind:entry.kind,value:entry.value,reason:(reason??"").slice(0,300)||undefined,createdAt:now});
+ // Block every matching prospect so no pipeline path (ranking, demos, drafts) touches them.
+ const prospects=await ctx.db.query("prospects").withIndex("by_owner_updated",q=>q.eq("ownerId",user)).take(1000);
+ let blocked=0;
+ for(const p of prospects){
+  if(p.status==="blocked"||!isSuppressed({contact:p.contact,website:p.website},[entry]))continue;
+  await ctx.db.patch(p._id,{status:"blocked",updatedAt:now});
+  await ctx.db.insert("activities",{ownerId:user,prospectId:p._id,kind:"do_not_contact",summary:"Added to the do-not-contact list ("+entry.value+"); prospect blocked",timestamp:now});
+  blocked++;
+ }
+ return {added:!existing,kind:entry.kind as string,value:entry.value,blockedProspects:blocked};
+}
 
 export const remove=mutation({
  args:{id:v.id("suppressions")},returns:v.boolean(),

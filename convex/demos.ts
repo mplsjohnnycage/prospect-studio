@@ -85,19 +85,20 @@ async function sha256Hex(text:string){
 /** Starts generation and returns immediately; the panel shows "Building" until the worker finishes. */
 export const generate=action({
  args:{prospectId:v.id("prospects")},
- handler:async(ctx,a):Promise<{started:boolean}>=>{
-  const user=await owner(ctx);
-  if(!process.env.GEMINI_API_KEY)throw Error("GEMINI_API_KEY is not configured on this deployment");
-  const data=await ctx.runQuery(internal.demos.context,{prospectId:a.prospectId,ownerId:user});
-  if(!data)throw Error("Prospect not found");
-  if(!data.sources.length)throw Error("Extract website evidence first (Research tab). Demos are built only from sourced facts.");
-  await limiter.limit(ctx,"demoGeneration",{key:user,throws:true});
-  const claimId=crypto.randomUUID();
-  const job=await ctx.runMutation(internal.demos.begin,{prospectId:a.prospectId,ownerId:user,claimId});
-  await ctx.scheduler.runAfter(0,internal.demos.generateWorker,{prospectId:a.prospectId,ownerId:user,claimId,...job});
-  return {started:true};
- }
+ handler:async(ctx,a):Promise<{started:boolean}>=>startDemoFor(ctx,await owner(ctx),a.prospectId)
 });
+/** Used by the UI action and by the agent tools. */
+export async function startDemoFor(ctx:ActionCtx,user:string,prospectId:Id<"prospects">):Promise<{started:boolean}>{
+ if(!process.env.GEMINI_API_KEY)throw Error("GEMINI_API_KEY is not configured on this deployment");
+ const data=await ctx.runQuery(internal.demos.context,{prospectId,ownerId:user});
+ if(!data)throw Error("Prospect not found");
+ if(!data.sources.length)throw Error("Research the business website first. Demos are built only from sourced facts.");
+ await limiter.limit(ctx,"demoGeneration",{key:user,throws:true});
+ const claimId=crypto.randomUUID();
+ const job=await ctx.runMutation(internal.demos.begin,{prospectId,ownerId:user,claimId});
+ await ctx.scheduler.runAfter(0,internal.demos.generateWorker,{prospectId,ownerId:user,claimId,...job});
+ return {started:true};
+}
 
 export const failGeneration=internalMutation({
  args:{conceptId:v.id("concepts"),claimId:v.string(),error:v.string()},

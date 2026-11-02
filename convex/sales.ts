@@ -3,6 +3,7 @@
 // AgentMail REST API from johnnyc@agentmail.to (AGENTMAIL_INBOX_ID); replies are polled every
 // few minutes, opt-outs are suppressed automatically, and a suggested reply waits for approval.
 import {action,internalAction,internalMutation,internalQuery,mutation} from "./_generated/server";
+import type {ActionCtx} from "./_generated/server";
 import {components,internal} from "./_generated/api";
 import type {Id} from "./_generated/dataModel";
 import {v} from "convex/values";
@@ -65,13 +66,14 @@ export const upsertDraft=internalMutation({
 });
 export const prepareEmail=action({
  args:{prospectId:v.id("prospects")},
- handler:async(ctx,a):Promise<{outreachId:string;demoUrl:string;created:boolean;reapprovalNeeded:boolean}>=>{
-  const user=await owner(ctx);
-  const demoUrl=await ensureShareUrl(ctx,a.prospectId,user);
-  const r=await ctx.runMutation(internal.sales.upsertDraft,{prospectId:a.prospectId,ownerId:user,demoUrl});
-  return {...r,outreachId:r.outreachId,demoUrl};
- }
+ handler:async(ctx,a):Promise<{outreachId:string;demoUrl:string;created:boolean;reapprovalNeeded:boolean}>=>prepareEmailFor(ctx,await owner(ctx),a.prospectId)
 });
+/** Drafts (never sends) the first email. Used by the UI action and by the agent tools. */
+export async function prepareEmailFor(ctx:Pick<ActionCtx,"runQuery"|"runMutation">,user:string,prospectId:Id<"prospects">){
+ const demoUrl=await ensureShareUrl(ctx,prospectId,user);
+ const r=await ctx.runMutation(internal.sales.upsertDraft,{prospectId,ownerId:user,demoUrl});
+ return {...r,outreachId:r.outreachId as string,demoUrl};
+}
 
 // ---------- Send (one explicit click per email) ----------
 export const send=mutation({
