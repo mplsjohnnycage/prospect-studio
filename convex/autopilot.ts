@@ -6,6 +6,8 @@ import {RateLimiter,HOUR} from "@convex-dev/rate-limiter";
 import {owner} from "./identity";
 import {directions} from "../src/lib/domain";
 import {candidateFromSearch,qualifyBusiness,selectDemoEligible,composeOutreach} from "../src/lib/prospect-intelligence";
+import {loadSuppressions} from "./suppressions";
+import {isSuppressed} from "../src/lib/suppression";
 import {assessOpportunity,buildSearchQueries,extractContacts,rankScore,siteKey,websiteVariants} from "../src/lib/prospect-signals";
 import type {MutationCtx,QueryCtx} from "./_generated/server";
 import type {ActionCtx} from "./_generated/server";
@@ -53,7 +55,8 @@ export const upsert=internalMutation({
    }
    return existing._id;
   }
-  const id=await ctx.db.insert("prospects",{...changes,ownerId:a.ownerId,campaignKey:a.campaignKey,contact:(c.contact??"").slice(0,250),notes:"Source: "+c.url+"\n"+c.reasons.join("; "),stage:"Qualify",status:c.qualified?"queued":"needs_approval",source:"firecrawl-search"});
+  const suppressedHit=isSuppressed({contact:c.contact,website:c.website},await loadSuppressions(ctx,a.ownerId));
+  const id=await ctx.db.insert("prospects",{...changes,ownerId:a.ownerId,campaignKey:a.campaignKey,contact:(c.contact??"").slice(0,250),notes:"Source: "+c.url+"\n"+c.reasons.join("; ")+(suppressedHit?"\nOn the do-not-contact list ("+suppressedHit.value+")":""),stage:"Qualify",status:suppressedHit?"blocked":(c.qualified?"queued":"needs_approval"),source:"firecrawl-search"});
   await ctx.db.insert("sources",{ownerId:a.ownerId,prospectId:id,url:c.url,summary:(c.description+"\n"+c.markdown).slice(0,12000),checksum:"",verifiedAt:stamp});
   await ctx.db.insert("activities",{ownerId:a.ownerId,prospectId:id,kind:"discovered",summary:"Public web search indexed and qualified: score "+c.score+"; "+(c.qualified?"passed":"review"),timestamp:stamp});
   return id;
@@ -144,6 +147,8 @@ export const draftAfterDemo=mutation({
   await requireTopDecile(ctx,p);
   const concepts=await ctx.db.query("concepts").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).take(20);
   if(!concepts.some(c=>c.status==="approved"&&!!c.html))throw Error("Verified demo required before drafting");
+  const dncHit=isSuppressed({contact:p.contact,website:p.website},await loadSuppressions(ctx,p.ownerId));
+  if(dncHit){await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"do_not_contact",summary:"Draft skipped: matches do-not-contact entry "+dncHit.value,timestamp:Date.now()});return {created:false};}
   const prior=await ctx.db.query("outreach").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).first();
   if(prior)return {created:false,id:prior._id};
   const draft=composeOutreach({name:p.name,trade:p.trade,city:p.city,findings:p.scoreReasons||[]},{postalAddress:process.env.OUTREACH_POSTAL_ADDRESS});
@@ -249,6 +254,8 @@ export const draftForService=internalMutation({
   await requireTopDecile(ctx,p);
   const concepts=await ctx.db.query("concepts").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).take(20);
   if(!concepts.some(c=>c.status==="approved"&&!!c.html))throw Error("No completed demo");
+  const dncHit=isSuppressed({contact:p.contact,website:p.website},await loadSuppressions(ctx,p.ownerId));
+  if(dncHit){await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"do_not_contact",summary:"Draft skipped: matches do-not-contact entry "+dncHit.value,timestamp:Date.now()});return {created:false,suppressed:true,emailsSent:0};}
   const existing=await ctx.db.query("outreach").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).first();
   if(existing)return {created:false,emailsSent:0};
   const content=composeOutreach({name:p.name,trade:p.trade,city:p.city,findings:p.scoreReasons||[]},{postalAddress:process.env.OUTREACH_POSTAL_ADDRESS});

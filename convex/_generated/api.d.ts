@@ -22,6 +22,7 @@ import type * as identity from "../identity.js";
 import type * as outreach from "../outreach.js";
 import type * as prospects from "../prospects.js";
 import type * as research from "../research.js";
+import type * as suppressions from "../suppressions.js";
 
 import type {
   ApiFromModules,
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   outreach: typeof outreach;
   prospects: typeof prospects;
   research: typeof research;
+  suppressions: typeof suppressions;
 }>;
 
 /**
