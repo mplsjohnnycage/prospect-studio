@@ -16,14 +16,15 @@ import {composeOutreach} from "../src/lib/prospect-intelligence";
 import {outreachFooter,outreachIssues} from "../src/lib/prospect-signals";
 import {addDemoLink,buildReplyPrompt,fallbackReply,firstEmail,isOptOut,REPLY_SYSTEM_PROMPT,senderEmail,stripQuoted} from "../src/lib/sales";
 import {generateText,modelList,withModelFallback} from "../src/lib/gemini";
+import {cancelOpenFollowUps} from "./followups";
 
 const limiter=new RateLimiter(components.rateLimiter,{outreachSend:{kind:"fixed window",rate:40,period:24*HOUR}});
 const inbox=()=>process.env.AGENTMAIL_INBOX_ID||"johnnyc@agentmail.to";
-const footerOpts=()=>({postalAddress:process.env.OUTREACH_POSTAL_ADDRESS,senderName:process.env.OUTREACH_SENDER_NAME});
+export const footerOpts=()=>({postalAddress:process.env.OUTREACH_POSTAL_ADDRESS,senderName:process.env.OUTREACH_SENDER_NAME});
 const API="https://api.agentmail.to/v0/inboxes/";
-const LABEL="prospect-studio";
+export const LABEL="prospect-studio";
 
-async function agentmail(path:string,init?:RequestInit){
+export async function agentmail(path:string,init?:RequestInit){
  const key=process.env.AGENTMAIL_API_KEY;
  if(!key)throw Error("AGENTMAIL_API_KEY is not configured");
  const res=await fetch(API+encodeURIComponent(inbox())+path,{...init,headers:{Authorization:"Bearer "+key,"content-type":"application/json",...(init?.headers??{})},signal:AbortSignal.timeout(30_000)});
@@ -190,6 +191,7 @@ export const ingestReply=internalMutation({
   const o=await ctx.db.get(a.outreachId);if(!o)return false;
   const p=await ctx.db.get(o.prospectId);if(!p)return false;
   const optOut=isOptOut(a.text),now=Date.now();
+  await cancelOpenFollowUps(ctx,p._id,"They replied");
   const replyId=await ctx.db.insert("replies",{ownerId:o.ownerId,prospectId:p._id,outreachId:o._id,messageId:a.messageId,threadId:a.threadId,from:a.from.slice(0,300),subject:a.subject.slice(0,300),text:a.text,optOut,receivedAt:a.receivedAt});
   if(optOut){
    const email=normalizeSuppression(senderEmail(a.from));

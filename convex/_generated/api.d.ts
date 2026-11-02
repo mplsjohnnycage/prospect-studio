@@ -9,15 +9,18 @@
  */
 
 import type * as agentTools from "../agentTools.js";
+import type * as alerts from "../alerts.js";
 import type * as assistant from "../assistant.js";
 import type * as auth from "../auth.js";
 import type * as autopilot from "../autopilot.js";
 import type * as autopilotService from "../autopilotService.js";
+import type * as bookings from "../bookings.js";
 import type * as calendar from "../calendar.js";
 import type * as crons from "../crons.js";
 import type * as demoSubmissions from "../demoSubmissions.js";
 import type * as demos from "../demos.js";
 import type * as email from "../email.js";
+import type * as followups from "../followups.js";
 import type * as geospatial from "../geospatial.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
@@ -25,6 +28,8 @@ import type * as identity from "../identity.js";
 import type * as imports from "../imports.js";
 import type * as mcp from "../mcp.js";
 import type * as outreach from "../outreach.js";
+import type * as places from "../places.js";
+import type * as pricing from "../pricing.js";
 import type * as prospects from "../prospects.js";
 import type * as research from "../research.js";
 import type * as sales from "../sales.js";
@@ -38,15 +43,18 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agentTools: typeof agentTools;
+  alerts: typeof alerts;
   assistant: typeof assistant;
   auth: typeof auth;
   autopilot: typeof autopilot;
   autopilotService: typeof autopilotService;
+  bookings: typeof bookings;
   calendar: typeof calendar;
   crons: typeof crons;
   demoSubmissions: typeof demoSubmissions;
   demos: typeof demos;
   email: typeof email;
+  followups: typeof followups;
   geospatial: typeof geospatial;
   health: typeof health;
   http: typeof http;
@@ -54,6 +62,8 @@ declare const fullApi: ApiFromModules<{
   imports: typeof imports;
   mcp: typeof mcp;
   outreach: typeof outreach;
+  places: typeof places;
+  pricing: typeof pricing;
   prospects: typeof prospects;
   research: typeof research;
   sales: typeof sales;

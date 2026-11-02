@@ -69,3 +69,10 @@ export function fallbackReply(c: {bookingUrl?: string}): string {
     : "What are two times this week that work for a quick 15-minute call?";
   return `Thanks for getting back to me! I'd be glad to walk you through the concept and answer any questions. Pricing depends on the pages and features you need, so I'll give you an exact quote after a short call.\n\n${next}`;
 }
+
+/** Short, polite follow-ups for a first email with no answer. No tracking talk, no pressure. */
+export function followUpText(step: 1 | 2, c: {name: string; demoUrl?: string}): string {
+  const link = c.demoUrl ? `\n\n${c.demoUrl}` : "";
+  if (step === 1) return `Hi there,\n\nJust bringing this back to the top of your inbox in case it got buried. I put together a free website concept for ${c.name}, no strings attached:${link}\n\nIf it's useful, I'm happy to walk you through it on a quick 15-minute call.\n\nBest,\nJohnny`;
+  return `Hi,\n\nLast note from me on this. The concept I made for ${c.name} is still here if you'd like a look:${link}\n\nIf the timing isn't right, just reply "later" and I'll check back in a few months. Otherwise I'll close this out.\n\nThanks,\nJohnny`;
+}

@@ -26,7 +26,9 @@ export const detail=query({args:{id:v.id("prospects")},handler:async(ctx,{id})=>
  const sources=await ctx.db.query("sources").withIndex("by_prospect",q=>q.eq("prospectId",id)).collect();
  const replies=await ctx.db.query("replies").withIndex("by_prospect",q=>q.eq("prospectId",id)).order("desc").take(50);
  const drafts=await ctx.db.query("replyDrafts").withIndex("by_prospect",q=>q.eq("prospectId",id)).take(100);
- return {prospect,concepts,outreach,sources,replies:replies.map(r=>{const d=drafts.find(x=>x.replyId===r._id);return {id:r._id,from:r.from,subject:r.subject,text:r.text,optOut:r.optOut,receivedAt:r.receivedAt,draft:d?{id:d._id,body:d.body,status:d.status,generator:d.generator}:undefined};})};
+ const followups=await ctx.db.query("followups").withIndex("by_prospect",q=>q.eq("prospectId",id)).take(10);
+ const bookings=await ctx.db.query("bookings").withIndex("by_prospect",q=>q.eq("prospectId",id)).order("desc").take(10);
+ return {prospect,concepts,outreach,sources,followups:followups.map(f=>({id:f._id,step:f.step,subject:f.subject,body:f.body,status:f.status,sending:f.deliveryStatus==="sending",sendError:f.sendError,sentAt:f.sentAt})),bookings:bookings.map(b=>({id:b._id,name:b.name,phone:b.phone,email:b.email,preferred:b.preferred,note:b.note,status:b.status,createdAt:b.createdAt})),replies:replies.map(r=>{const d=drafts.find(x=>x.replyId===r._id);return {id:r._id,from:r.from,subject:r.subject,text:r.text,optOut:r.optOut,receivedAt:r.receivedAt,draft:d?{id:d._id,body:d.body,status:d.status,generator:d.generator}:undefined};})};
 }});
 export const activity=query({args:{},handler:async(ctx)=>{
  const user=await owner(ctx);return await ctx.db.query("activities").withIndex("by_owner_time",q=>q.eq("ownerId",user)).order("desc").take(80);

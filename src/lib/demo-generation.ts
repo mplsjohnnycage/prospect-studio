@@ -35,14 +35,26 @@ Hard rules:
 6. Interactivity in vanilla JS: a mobile navigation toggle, smooth in-page navigation, at least one interactive component (tabs, an accordion FAQ, or a simple project-scope estimator without prices), and a quote form with client-side validation that shows an in-page thank-you message. The form must never submit anywhere: no action attribute, and call preventDefault.
 7. Accessibility and responsiveness: semantic landmarks, labelled inputs, visible focus states, AA contrast, and a layout that works from 375px to 1440px wide.
 8. Color: if a brand palette is provided, build the theme from it. Otherwise choose a tasteful palette that fits the trade and the voice.
-9. This is a private concept, not the official site. Do not say it is official.`;
+9. This is a private concept, not the official site. Do not say it is official.
+10. When a design system is given, follow it exactly: its fonts, its CSS variables, its look and its section plan.
 
-export function buildDemoPrompt(facts: DemoFacts, direction: Direction, gaps: string[], previousErrors: string[] = []): string {
+Polish that separates a designed site from a template (check each before you answer):
+- One clear H1; a type scale built from the --step variables; headings in the display font, text in the body font.
+- A consistent spacing rhythm from the --space variables; sections alternate background (var(--bg) / var(--surface) / one accent band) so the page has rhythm.
+- Content aligned to one max-width container; text measure under 70 characters.
+- Buttons with hover, active and focus-visible states; links distinguishable; tap targets at least 44px.
+- Inline SVG icons drawn in one consistent style (same stroke width and corner style), sized to the text.
+- A sticky header that shrinks on scroll, with the primary CTA always visible on mobile.
+- Copy that is specific to this trade and city (materials, problems, seasons, neighborhoods if verified), never generic filler like "We are committed to excellence".
+- Subtle motion only: elements fade/slide in once with IntersectionObserver, and prefers-reduced-motion disables it.`;
+
+export function buildDemoPrompt(facts: DemoFacts, direction: Direction, gaps: string[], previousErrors: string[] = [], designBrief = ""): string {
   const fix = gaps.length ? gaps.map(g => "- " + g).join("\n") : "- (no specific problems recorded)";
   const retry = previousErrors.length
     ? `\n\nYour previous attempt was rejected for these reasons. Fix every one:\n${previousErrors.map(e => "- " + e).join("\n")}`
     : "";
-  return `Design direction: ${direction.direction} (${direction.variant}): ${direction.description}
+  const design = designBrief ? `\n\n${designBrief}` : "";
+  return `Design direction: ${direction.direction} (${direction.variant}): ${direction.description}${design}
 
 Problems with their current web presence that this concept should fix:
 ${fix}
@@ -117,4 +129,36 @@ export function finalizeDemoHtml(html: string, opts: {businessName: string; send
     out = /<body\b[^>]*>/i.test(out) ? out.replace(/<body\b[^>]*>/i, m => m + banner) : out;
   }
   return out;
+}
+
+// ---------- Art-director review and one fix pass ----------
+export const DEMO_REVIEW_SYSTEM = `You are an exacting art director reviewing a one-page website concept for a local service business before it is shown to the owner. Judge it as a phone visitor first, then desktop. Be strict: 8 or more only if it would impress the owner at first glance and look custom-designed, not templated.
+
+Reply with JSON only, no prose: {"score": <overall 1-10, one decimal>, "fixes": ["<specific, actionable change naming the section or selector>", ...]}
+List at most 8 fixes, most important first. Focus on visual hierarchy, typography, spacing rhythm, color and contrast, layout variety between sections, hero impact, mobile layout (read the media queries), CTA clarity, and copy that sounds generic. Never ask to add facts (phone numbers, ratings, reviews, prices, years, licenses) that are not already in the page.`;
+
+export function buildReviewPrompt(html: string, facts: DemoFacts): string {
+  return `Business: ${facts.name}, a ${facts.trade} business in ${facts.city}.\n\nPage HTML:\n${html}`;
+}
+
+export function parseReview(text: string): {score: number; fixes: string[]} | null {
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try {
+    const j = JSON.parse(m[0]) as {score?: unknown; fixes?: unknown};
+    const score = typeof j.score === "number" ? j.score : parseFloat(String(j.score));
+    if (!Number.isFinite(score)) return null;
+    const fixes = Array.isArray(j.fixes) ? j.fixes.filter((f): f is string => typeof f === "string" && f.trim().length > 3).map(f => f.trim().slice(0, 300)).slice(0, 8) : [];
+    return {score: Math.max(1, Math.min(10, Math.round(score * 10) / 10)), fixes};
+  } catch { return null; }
+}
+
+export function buildFixPrompt(facts: DemoFacts, direction: Direction, gaps: string[], designBrief: string, html: string, fixes: string[]): string {
+  return `${buildDemoPrompt(facts, direction, gaps, [], designBrief)}
+
+An art director reviewed your page. Apply every fix below, keep everything that already works, and return the complete improved HTML document (all the same hard rules apply):
+${fixes.map(f => "- " + f).join("\n")}
+
+Current page:
+${html}`;
 }

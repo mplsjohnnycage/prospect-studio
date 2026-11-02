@@ -11,11 +11,13 @@ import {isSuppressed} from "../src/lib/suppression";
 import {siteKey} from "../src/lib/prospect-signals";
 import {publicSite} from "../src/lib/url-safety";
 import {businessKey} from "../src/lib/prospect-import";
+import {geo} from "./geospatial";
 
 export const importRowV=v.object({
  name:v.string(),trade:v.optional(v.string()),city:v.optional(v.string()),website:v.optional(v.string()),
  phone:v.optional(v.string()),email:v.optional(v.string()),address:v.optional(v.string()),
  rating:v.optional(v.number()),reviews:v.optional(v.number()),sourceUrl:v.optional(v.string()),
+ latitude:v.optional(v.number()),longitude:v.optional(v.number()),
 });
 type Row=Infer<typeof importRowV>;
 const MAX_ROWS=250;
@@ -49,8 +51,10 @@ export async function importRowsFor(ctx:MutationCtx,ownerId:string,rows:Row[],op
   if((r.reviews??0)>=20){score+=10;reasons.push(r.reviews+" reviews: established business");}
   if((r.rating??0)>=4.5){score+=8;reasons.push("Rated "+r.rating+": strong reputation to show off");}
   if(contact){score+=5;reasons.push("Contact info on file");}
+  const coords=r.latitude!==undefined&&r.longitude!==undefined&&Math.abs(r.latitude)<=90&&Math.abs(r.longitude)<=180?{lat:r.latitude,lng:r.longitude}:null;
   const notes=["Imported from "+source,r.address&&"Address: "+r.address,phone&&"Phone: "+phone,email&&"Email: "+email,r.rating!==undefined&&"Rating: "+r.rating+(r.reviews!==undefined?" ("+r.reviews+" reviews)":""),r.sourceUrl&&"Listing: "+r.sourceUrl].filter(Boolean).join("\n");
-  const id=await ctx.db.insert("prospects",{ownerId,name,city,trade:(r.trade??opts.trade??"Other").trim().slice(0,120)||"Other",website,contact,notes:notes.slice(0,4000),score:Math.min(95,score),stage:"Discover",status:isBlocked?"blocked":"queued",source:"import:"+source,qualified:!isBlocked&&score>=70,opportunity:website?undefined:90,scoreReasons:reasons,updatedAt:now});
+  const id=await ctx.db.insert("prospects",{ownerId,name,city,trade:(r.trade??opts.trade??"Other").trim().slice(0,120)||"Other",website,contact,notes:notes.slice(0,4000),score:Math.min(95,score),stage:"Discover",status:isBlocked?"blocked":"queued",source:"import:"+source,qualified:!isBlocked&&score>=70,opportunity:website?undefined:90,scoreReasons:reasons,updatedAt:now,...(coords?{latitude:coords.lat,longitude:coords.lng}:{})});
+  if(coords)await geo.insert(ctx,id,{latitude:coords.lat,longitude:coords.lng},{ownerId,trade:(r.trade??opts.trade??"Other").slice(0,120)},Math.min(95,score));
   const listing=safeUrl(r.sourceUrl);
   if(listing){
    const facts=["Business listing for "+name+" (imported from "+source+").",r.trade&&"Category: "+r.trade+".",r.address&&"Address: "+r.address+".",phone&&"Phone: "+phone+".",email&&"Email: "+email+".",r.rating!==undefined&&"Rating: "+r.rating+" out of 5"+(r.reviews!==undefined?" from "+r.reviews+" reviews":"")+".",website&&"Website: "+website+"."].filter(Boolean).join("\n");

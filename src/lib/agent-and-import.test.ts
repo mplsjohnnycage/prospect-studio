@@ -97,3 +97,104 @@ test("cleanError keeps one readable line", () => {
   assert.equal(cleanError("[Request ID: abc] Server Error\nUncaught Error: The first email was already sent.\n    at handler (../../convex/sales.ts:49:54)"), "The first email was already sent.");
   assert.equal(cleanError("Plain failure\nstack"), "Plain failure");
 });
+
+import {brandAccent,contrast,pickPreset,presetBrief,presetTokens,PRESETS} from "./design-presets";
+import {parseReview} from "./demo-generation";
+
+test("presets match trades and never use banned fonts", () => {
+  assert.equal(pickPreset("Painting").id, "editorial-craft");
+  assert.equal(pickPreset("Roofing").id, "bold-industrial");
+  assert.equal(pickPreset("HVAC").id, "clean-technical");
+  assert.equal(pickPreset("Landscaping").id, "organic-natural");
+  assert.equal(pickPreset("House Cleaning").id, "fresh-minimal");
+  assert.equal(pickPreset("Underwater basket weaving").id, "heritage-trust");
+  for (const p of PRESETS) {
+    assert.doesNotMatch(p.display + p.body, /inter|roboto|arial|helvetica/i);
+    assert.ok(contrast(p.tokens.ink, p.tokens.bg) >= 7, p.id + " body text contrast");
+    assert.ok(contrast(p.tokens.accent, p.tokens.accentInk) >= 4.5, p.id + " button contrast");
+  }
+});
+
+test("brand color replaces the accent only when it is saturated and readable", () => {
+  assert.equal(brandAccent(["#ffffff", "#111111", "#d12f2f"]), "#d12f2f");
+  assert.equal(brandAccent(["#f5f5f5", "#222222"]), null);
+  const t = presetTokens(pickPreset("Painting"), ["#0b5fa5"]);
+  assert.equal(t.accent, "#0b5fa5");
+  assert.equal(t.brandColorUsed, true);
+  assert.match(presetBrief(pickPreset("Painting"), []), /fonts\.googleapis\.com\/css2\?family=Fraunces/);
+});
+
+test("review parsing tolerates prose and clamps the score", () => {
+  assert.deepEqual(parseReview('Here you go: {"score": 7.46, "fixes": ["Tighten hero spacing", "x"]}'), {score: 7.5, fixes: ["Tighten hero spacing"]});
+  assert.equal(parseReview("no json"), null);
+  assert.equal(parseReview('{"score": 14, "fixes": []}')?.score, 10);
+});
+
+import {bookingPage,injectBookingCta,isHumanView,parseBookingForm} from "./booking";
+
+test("only real browser visits count as demo views", () => {
+  const h = (o: Record<string, string>) => ({ get: (k: string) => o[k.toLowerCase()] ?? null });
+  const chrome = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1";
+  assert.equal(isHumanView(h({ "user-agent": chrome, accept: "text/html,application/xhtml+xml", "sec-fetch-dest": "document" })), true);
+  assert.equal(isHumanView(h({ "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1)", accept: "text/html" })), false);
+  assert.equal(isHumanView(h({ "user-agent": "Microsoft Office/16.0 (Windows NT 10.0; Microsoft Outlook)", accept: "text/html" })), false);
+  assert.equal(isHumanView(h({ "user-agent": chrome, accept: "*/*", "sec-fetch-dest": "image" })), false);
+  assert.equal(isHumanView(h({ accept: "text/html" })), false);
+});
+
+test("booking form needs a name and a way to reach them, and drops honeypot spam", () => {
+  assert.deepEqual(parseBookingForm("name=Dana&phone=612-555-0147&preferred=Saturday"), { ok: true, value: { name: "Dana", phone: "612-555-0147", email: "", preferred: "Saturday", note: "" } });
+  assert.equal(parseBookingForm("name=Dana").ok, false);
+  assert.equal(parseBookingForm("name=Dana&email=bad").ok, false);
+  const spam = parseBookingForm("name=Bot&email=a@b.co&website=http://spam");
+  assert.equal(spam.ok, false);
+  assert.equal(!spam.ok && spam.spam, true);
+});
+
+test("booking CTA is injected once and the page escapes prospect text", () => {
+  const once = injectBookingCta("<html><body><p>x</p></body></html>", "/book/abc", false);
+  assert.equal(injectBookingCta(once, "/book/abc", false), once);
+  assert.match(once, /data-book-cta href="\/book\/abc"/);
+  const page = bookingPage({ businessName: "<script>x</script>", senderBrand: "Found It. Fix It.", demoHref: "/demo/abc", values: { name: '"><img src=x>' } });
+  assert.doesNotMatch(page, /<script>x<\/script>|<img src=x>/);
+});
+
+import {DEFAULT_PACKAGES,parseAcceptForm,proposalPage,validatePackages} from "./pricing";
+import {followUpText} from "./sales";
+
+test("price list validation normalizes ids and rejects bad input", () => {
+  const out = validatePackages([{ name: "Starter Site", setup: 1200.4, monthly: 49, includes: [" One page ", ""] }]);
+  assert.deepEqual(out, [{ id: "starter-site", name: "Starter Site", setup: 1200, monthly: 49, includes: ["One page"] }]);
+  assert.throws(() => validatePackages([]));
+  assert.throws(() => validatePackages([{ name: "A", setup: -1, monthly: 0, includes: [] }]));
+  assert.throws(() => validatePackages([{ name: "A", setup: 1, monthly: 0, includes: [], paymentUrl: "http://insecure" }]));
+  assert.throws(() => validatePackages([{ name: "A", setup: 1, monthly: 0, includes: [] }, { name: "a", setup: 1, monthly: 0, includes: [] }]));
+});
+
+test("accepting a proposal needs a package, name, email and the checkbox", () => {
+  assert.equal(parseAcceptForm("package=starter&name=Dana&email=d%40x.co&agree=yes", DEFAULT_PACKAGES).ok, true);
+  assert.equal(parseAcceptForm("package=nope&name=Dana&email=d%40x.co&agree=yes", DEFAULT_PACKAGES).ok, false);
+  assert.equal(parseAcceptForm("package=starter&name=Dana&email=d%40x.co", DEFAULT_PACKAGES).ok, false);
+  const page = proposalPage({ business: "<b>x</b>", senderBrand: "F", packages: DEFAULT_PACKAGES, note: "<script>" });
+  assert.doesNotMatch(page, /<b>x<\/b>|<script>/);
+  assert.match(page, /\$1,200/);
+});
+
+test("follow-up copy includes the demo link and stays short", () => {
+  const one = followUpText(1, { name: "Acme", demoUrl: "https://x.convex.site/demo/abc" });
+  assert.match(one, /Acme/);
+  assert.match(one, /demo\/abc/);
+  assert.ok(one.length < 500);
+  assert.match(followUpText(2, { name: "Acme" }), /Last note/);
+});
+
+import {placeToRow,placesQueries} from "./places";
+
+test("google places results become import rows; closed businesses are skipped", () => {
+  const row = placeToRow({ id: "x", displayName: { text: "Acme Painting" }, formattedAddress: "12 Main St, Oakdale, MN 55128, USA", nationalPhoneNumber: "(651) 555-0100", websiteUri: "https://acme.example/", rating: 4.9, userRatingCount: 88, googleMapsUri: "https://maps.google.com/?cid=1", businessStatus: "OPERATIONAL", location: { latitude: 44.96, longitude: -92.96 } }, "Painting", "Oakdale, MN");
+  assert.equal(row?.city, "Oakdale, MN");
+  assert.equal(row?.reviews, 88);
+  assert.equal(row?.latitude, 44.96);
+  assert.equal(placeToRow({ displayName: { text: "Gone LLC" }, businessStatus: "CLOSED_PERMANENTLY" }, "Painting", "X"), null);
+  assert.deepEqual(placesQueries("Painting", "Oakdale, MN"), ["painting in Oakdale, MN", "house painters in Oakdale, MN", "painting contractors in Oakdale, MN"]);
+});

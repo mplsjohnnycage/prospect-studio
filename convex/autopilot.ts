@@ -1,4 +1,5 @@
 import {BUILD_LEASE_MS,decideBuildClaim,requireBuildClaim,validateBuildClaimId} from "../src/lib/build-lease";
+import {placesDiscovery} from "./places";
 import {action,internalAction,internalMutation,internalQuery,mutation,query} from "./_generated/server";
 import {components,internal} from "./_generated/api";
 import {v} from "convex/values";
@@ -70,11 +71,13 @@ export const discover=action({
   const trade=a.trade.trim(),city=a.city.trim();
   if(trade.length<3||trade.length>70||city.length<3||city.length>120)throw Error("Trade and city must be 3–120 characters");
   const key=process.env.FIRECRAWL_API_KEY;
-  if(!key||!key.startsWith("fc-"))throw Error("Firecrawl search requires an active API key");
+  if(!process.env.GOOGLE_MAPS_API_KEY&&(!key||!key.startsWith("fc-")))throw Error("Business search needs GOOGLE_MAPS_API_KEY or a Firecrawl key");
   return await discoveryCore(ctx,user,trade,city);
  }
 });
 export async function discoveryCore(ctx:ActionCtx,user:string,trade:string,city:string){
+ // Real businesses from Google Places when a key is set; web search otherwise.
+ if(process.env.GOOGLE_MAPS_API_KEY){await limiter.limit(ctx,"discovery",{key:user,throws:true});return await placesDiscovery(ctx,user,trade,city);}
  const key=process.env.FIRECRAWL_API_KEY;
  if(!key||!key.startsWith("fc-"))throw Error("Firecrawl API key not configured");
  await limiter.limit(ctx,"discovery",{key:user,throws:true});
