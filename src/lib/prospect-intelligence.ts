@@ -44,9 +44,13 @@ export function selectDemoEligible<T extends RankedProspect>(items:T[]):T[]{
  const pool=items.filter(p=>p.qualified&&!p.paused).sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id));
  return pool.slice(0,Math.floor(pool.length/10));
 }
-export function composeOutreach(p:{name:string;trade:string;city:string;findings:string[]},opts:OutreachFooterOptions={}):{subject:string;body:string;issues:string[]}{
- const safe=p.findings.filter(x=>!x.startsWith("Insufficient")&&!x.startsWith("Opportunity:")).slice(0,2).join("; ");
- const main="Hello,\n\nI researched "+p.name+" in "+p.city+" and prepared a private, unpublicized website concept for your "+p.trade+" business.\n\nResearch signals used: "+(safe||"publicly available company information")+".\n\nIf you'd like, I can share the concept for your feedback. Nothing has been published on your behalf.\n\nBest regards,\nMPLS Johnny Cage";
- const body=main.replace(/\n\nBest regards,\nMPLS Johnny Cage$/,"\n\nBest regards,")+outreachFooter(opts);
+export function composeOutreach(p:{name:string;trade:string;city:string;findings:string[];demoUrl?:string},opts:OutreachFooterOptions={}):{subject:string;body:string;issues:string[]}{
+ const trade=p.trade.trim().toLowerCase()||"local";
+ const demo=p.demoUrl
+  ?"You can see it here: "+p.demoUrl+"\nIt's a private demo made just for you. It isn't published or listed anywhere."
+  :"If you'd like, I can send you the private link. Nothing has been published on your behalf.";
+ const main="Hi there,\n\nI came across "+p.name+" while looking at "+trade+" businesses in "+p.city+", and I put together a free website concept for you. No strings attached.\n\n"+demo+"\n\nIf it's useful, I'm happy to walk you through it on a quick 15-minute call, or answer questions by email.\n\nBest regards,";
+ const body=main+outreachFooter(opts);
  return {subject:pickSubject(p.name),body,issues:outreachIssues(body,opts)};
 }
+

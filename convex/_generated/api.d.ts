@@ -13,7 +13,9 @@ import type * as auth from "../auth.js";
 import type * as autopilot from "../autopilot.js";
 import type * as autopilotService from "../autopilotService.js";
 import type * as calendar from "../calendar.js";
+import type * as crons from "../crons.js";
 import type * as demoSubmissions from "../demoSubmissions.js";
+import type * as demos from "../demos.js";
 import type * as email from "../email.js";
 import type * as geospatial from "../geospatial.js";
 import type * as health from "../health.js";
@@ -22,6 +24,7 @@ import type * as identity from "../identity.js";
 import type * as outreach from "../outreach.js";
 import type * as prospects from "../prospects.js";
 import type * as research from "../research.js";
+import type * as sales from "../sales.js";
 import type * as suppressions from "../suppressions.js";
 
 import type {
@@ -36,7 +39,9 @@ declare const fullApi: ApiFromModules<{
   autopilot: typeof autopilot;
   autopilotService: typeof autopilotService;
   calendar: typeof calendar;
+  crons: typeof crons;
   demoSubmissions: typeof demoSubmissions;
+  demos: typeof demos;
   email: typeof email;
   geospatial: typeof geospatial;
   health: typeof health;
@@ -45,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   outreach: typeof outreach;
   prospects: typeof prospects;
   research: typeof research;
+  sales: typeof sales;
   suppressions: typeof suppressions;
 }>;
 

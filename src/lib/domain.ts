@@ -2,9 +2,10 @@ export const stages = ["Discover","Qualify","Extract","Design","Demo","Outreach"
 export type Stage = (typeof stages)[number];
 export type ProspectStatus = "queued" | "running" | "needs_approval" | "paused" | "blocked" | "succeeded" | "failed";
 export interface Prospect { id:string; name:string; trade:string; city:string; website:string; score:number; stage:Stage; status:ProspectStatus; notes:string; contact:string; source:string; latitude?:number; longitude?:number; createdAt:string; updatedAt:string; }
-export interface Concept {id:string; prospectId:string; variant:string; direction:string; description:string; status:"draft" | "approved"; html?:string; sha256?:string; builtAt?:number; createdAt:string; }
+export interface Concept {id:string; prospectId:string; variant:string; direction:string; description:string; status:"draft" | "approved"; html?:string; sha256?:string; builtAt?:number; createdAt:string; generator?:string; model?:string; building?:boolean; generationError?:string; shared?:boolean; views?:number; lastViewedAt?:number; }
 export interface Activity {id:string; prospectId:string | null; kind:string; summary:string; at:string;}
-export interface Message {id:string; prospectId:string; subject:string; body:string; status:"draft" | "approved"; createdAt:string;}
+export interface Message {id:string; prospectId:string; subject:string; body:string; status:"draft" | "approved" | "sent" | "failed"; createdAt:string; recipient?:string; demoUrl?:string; deliveryStatus?:string; sendError?:string; sentAt?:number;}
+export interface Reply {id:string; from:string; subject:string; text:string; optOut:boolean; receivedAt:number; draft?:{id:string; body:string; status:"draft" | "sent" | "failed"; generator:string};}
 export type CommandKind = "qualify" | "extract" | "design" | "approve_concept" | "draft_outreach" | "approve_outreach" | "request_publish" | "pause" | "resume";
 export const directions = [
   {variant:"A", direction:"Editorial", description:"Strong typography, generous whitespace, confident storytelling and a premium services grid."},

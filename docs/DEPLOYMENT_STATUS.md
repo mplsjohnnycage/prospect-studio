@@ -14,6 +14,20 @@ Updated 2026-11-01. This document overrides historical notes in README.md.
 - Rivet Pi Durable worker exists on the Sprite and passes readiness only. There is no configured model provider, AI-completed site-generation workflow, or cloud-hosted remote authenticated actor session. Stitch SDK installed, but no Stitch credentials / design generation completed.
 - Calendar uses Convex persisted *manual planned appointments*, not an external calendar provider booking service. Publishing and outreach send effects remain approval-gated / disabled.
 
+## Sales loop (added 2026-11-02)
+
+End to end, from the prospect inspector's Outreach tab:
+
+1. **AI demo**: `demos.generate` builds a custom one-page site with Gemini from the prospect's saved source pages only (requires at least one source). Runs in the background (`demos.generateWorker`), checked by `validateDemoHtml` (no invented phone/email/rating, no external scripts or images, banned default fonts, at least 5 sections, inline interactivity), then labeled DEMO with noindex. Model order: `DEMO_MODELS` env, else gemini-3.5-flash, gemini-3.8-flash, gemini-flash-latest (Pro models return 429 on the current free-tier key).
+2. **Private link**: `demos.share` issues an unguessable token; `GET /demo/<token>` on the Convex site URL serves the page with a sandbox CSP, noindex and no-store, counts views, and stops serving if the prospect is blocked.
+3. **First email**: `sales.prepareEmail` drafts the email with the demo link, sender `OUTREACH_SENDER_NAME`, mailing address `OUTREACH_POSTAL_ADDRESS` and an opt-out line. The owner approves (`approve_outreach`), then sends with one more click (`sales.send`). Sending goes through the AgentMail REST API from `AGENTMAIL_INBOX_ID` (johnnyc@agentmail.to, display name "Johnny · Found It. Fix It."), 40 sends per day, blocked for suppressed or blocked prospects and for drafts missing the address footer.
+4. **Replies**: cron `poll prospect replies` (every 5 min) reads AgentMail threads labeled `prospect-studio`, stores new inbound messages (`replies`), auto-suppresses opt-outs, moves interested prospects to Convert, and drafts a suggested reply with Gemini (`replyDrafts`, never states prices). The owner edits and sends (`sales.sendReply`).
+5. **Close**: `sales.markOutcome` records won (with amount) or lost.
+
+Secrets set on both deployments: `GEMINI_API_KEY`, `AGENTMAIL_API_KEY`, `AGENTMAIL_INBOX_ID`, `OUTREACH_POSTAL_ADDRESS`, `OUTREACH_SENDER_NAME`. Optional: `OUTREACH_BOOKING_URL` (offered in suggested replies), `DEMO_MODELS`, `REPLY_MODELS`.
+
+Verified on Convex dev with a test owner identity and the owner's own inbox as recipient: demo generated (gemini-3.5-flash, 57 KB, checks passed), link served with correct headers and 404 for bad tokens, send blocked before approval, email delivered and thread recorded, reply ingested once (duplicate ignored), Gemini suggested reply without prices, reply sent, deal marked won, opt-out reply suppressed and blocked the prospect, live reply poll ran against AgentMail.
+
 ## Verification evidence (current release sequence)
 
 - `npm run test:unit`: 12 passing tests, including owner activation policy and agentOS Core guest execution.

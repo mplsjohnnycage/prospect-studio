@@ -24,7 +24,9 @@ export const detail=query({args:{id:v.id("prospects")},handler:async(ctx,{id})=>
  const concepts=await ctx.db.query("concepts").withIndex("by_prospect",q=>q.eq("prospectId",id)).collect();
  const outreach=await ctx.db.query("outreach").withIndex("by_prospect",q=>q.eq("prospectId",id)).collect();
  const sources=await ctx.db.query("sources").withIndex("by_prospect",q=>q.eq("prospectId",id)).collect();
- return {prospect,concepts,outreach,sources};
+ const replies=await ctx.db.query("replies").withIndex("by_prospect",q=>q.eq("prospectId",id)).order("desc").take(50);
+ const drafts=await ctx.db.query("replyDrafts").withIndex("by_prospect",q=>q.eq("prospectId",id)).take(100);
+ return {prospect,concepts,outreach,sources,replies:replies.map(r=>{const d=drafts.find(x=>x.replyId===r._id);return {id:r._id,from:r.from,subject:r.subject,text:r.text,optOut:r.optOut,receivedAt:r.receivedAt,draft:d?{id:d._id,body:d.body,status:d.status,generator:d.generator}:undefined};})};
 }});
 export const activity=query({args:{},handler:async(ctx)=>{
  const user=await owner(ctx);return await ctx.db.query("activities").withIndex("by_owner_time",q=>q.eq("ownerId",user)).order("desc").take(80);
@@ -78,7 +80,7 @@ export const execute=mutation({args:{id:v.id("prospects"),kind:commandValidator,
  case "approve_outreach":
   if(!args.messageId)throw new Error("Message id required");
   const m=await ctx.db.get(args.messageId);if(!m||m.ownerId!==user||m.prospectId!==args.id)throw new Error("Draft not found");
-  await ctx.db.patch(m._id,{status:"approved"});summary="Outreach approved, external delivery still disabled";break;
+  await ctx.db.patch(m._id,{status:"approved"});summary="Outreach approved; send it from the Outreach tab";break;
  case "pause":status="paused";summary="Pipeline paused";break;
  case "resume":status="queued";summary="Pipeline resumed";break;
  }
