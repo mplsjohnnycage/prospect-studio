@@ -56,3 +56,9 @@ GitHub `workflow` scope remains unavailable, so the pending GitHub Actions workf
 The owner selected **Vercel CI** instead of GitHub Actions. This release installs Turborepo 2.11.10 and the root `turbo.json`. Tasks tagged `ci` are `test:unit`, `lint`, and `typecheck`, each independently run and cached by Vercel CI. The repo-local NPM `packageManager` declaration ensures Turborepo resolves the single-package workspace. The Next.js build retains `npm run verify` as an additional fail-closed deployment build gate.
 
 Vercel CI must be explicitly enabled for the private `mplsjohnnycage/prospect-studio` repository using `vercel ci enable --scope johnnyc --remote origin` after pushing the configuration. Confirm its first pushed-commit run on the Vercel dashboard and the PR before calling it active. The previous pending GitHub Actions YAML has been retired; no `workflow` permission is needed for Vercel CI. Do not merge until all Vercel CI tasks and the Vercel preview check pass.
+
+### Vercel CI activation evidence
+
+- Enabled for the linked private `mplsjohnnycage/prospect-studio` repository on Vercel team `johnnyc` using `vercel ci enable --scope johnnyc --remote origin --non-interactive --json`.
+- The Vercel CLI returned `status: ok`, `ciEnabled: true`, `outcome: enabled`.
+- Trigger a new Git push, then verify the task execution and GitHub PR check using `vercel ci list`, `vercel ci inspect`, and `gh pr checks`.
