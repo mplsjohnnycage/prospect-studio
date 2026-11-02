@@ -1,3 +1,4 @@
+import {outreachFooter,outreachIssues,pickSubject,type OutreachFooterOptions} from "./prospect-signals";
 export type SearchHit={url:string;title?:string;description?:string;markdown?:string};
 export type DiscoveredBusiness={name:string;website:string;trade:string;city:string;description:string;markdown:string;url:string};
 export type ScoredBusiness={score:number;qualified:boolean;reasons:string[];evidence:string[]};
@@ -43,7 +44,9 @@ export function selectDemoEligible<T extends RankedProspect>(items:T[]):T[]{
  const pool=items.filter(p=>p.qualified&&!p.paused).sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id));
  return pool.slice(0,Math.floor(pool.length/10));
 }
-export function composeOutreach(p:{name:string;trade:string;city:string;findings:string[]}):{subject:string;body:string}{
- const safe=p.findings.filter(x=>!x.startsWith("Insufficient")).slice(0,2).join("; ");
- return {subject:"A private website concept for "+p.name,body:"Hello,\n\nI researched "+p.name+" in "+p.city+" and prepared a private, unpublicized website concept for your "+p.trade+" business.\n\nResearch signals used: "+(safe||"publicly available company information")+".\n\nIf you'd like, I can share the concept for your feedback. Nothing has been published on your behalf.\n\nBest regards,\nMPLS Johnny Cage"};
+export function composeOutreach(p:{name:string;trade:string;city:string;findings:string[]},opts:OutreachFooterOptions={}):{subject:string;body:string;issues:string[]}{
+ const safe=p.findings.filter(x=>!x.startsWith("Insufficient")&&!x.startsWith("Opportunity:")).slice(0,2).join("; ");
+ const main="Hello,\n\nI researched "+p.name+" in "+p.city+" and prepared a private, unpublicized website concept for your "+p.trade+" business.\n\nResearch signals used: "+(safe||"publicly available company information")+".\n\nIf you'd like, I can share the concept for your feedback. Nothing has been published on your behalf.\n\nBest regards,\nMPLS Johnny Cage";
+ const body=main.replace(/\n\nBest regards,\nMPLS Johnny Cage$/,"\n\nBest regards,")+outreachFooter(opts);
+ return {subject:pickSubject(p.name),body,issues:outreachIssues(body,opts)};
 }

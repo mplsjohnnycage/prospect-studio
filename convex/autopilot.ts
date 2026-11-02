@@ -6,18 +6,19 @@ import {RateLimiter,HOUR} from "@convex-dev/rate-limiter";
 import {owner} from "./identity";
 import {directions} from "../src/lib/domain";
 import {candidateFromSearch,qualifyBusiness,selectDemoEligible,composeOutreach} from "../src/lib/prospect-intelligence";
+import {assessOpportunity,buildSearchQueries,extractContacts,rankScore,siteKey,websiteVariants} from "../src/lib/prospect-signals";
 import type {MutationCtx,QueryCtx} from "./_generated/server";
 import type {ActionCtx} from "./_generated/server";
 import type {Doc} from "./_generated/dataModel";
 
 const limiter=new RateLimiter(components.rateLimiter,{discovery:{kind:"fixed window",rate:4,period:HOUR}});
 export const cohort=(trade:string,city:string)=>(trade.trim().toLowerCase()+"::"+city.trim().toLowerCase()).slice(0,320);
-const candidateArg=v.object({name:v.string(),website:v.string(),trade:v.string(),city:v.string(),description:v.string(),markdown:v.string(),url:v.string(),score:v.number(),qualified:v.boolean(),reasons:v.array(v.string()),evidence:v.array(v.string())});
+const candidateArg=v.object({name:v.string(),website:v.string(),trade:v.string(),city:v.string(),description:v.string(),markdown:v.string(),url:v.string(),score:v.number(),qualified:v.boolean(),reasons:v.array(v.string()),evidence:v.array(v.string()),opportunity:v.optional(v.number()),contact:v.optional(v.string())});
 export async function ranked(ctx:QueryCtx|MutationCtx,ownerId:string,key:string) {
  const pool=await ctx.db.query("prospects").withIndex("by_owner_campaign",q=>q.eq("ownerId",ownerId).eq("campaignKey",key)).take(1001);
  if(pool.length>1000)throw Error("Cohort exceeds 1,000 prospects; automatic demo generation paused for safe pagination");
  const qualified=pool.filter(p=>p.qualified===true&&p.status!=="paused"&&p.status!=="blocked");
- const demoIds=selectDemoEligible(qualified.map(p=>({id:p._id,score:p.score,qualified:true,paused:false}))).map(p=>p.id);
+ const demoIds=selectDemoEligible(qualified.map(p=>({id:p._id,score:rankScore(p.score,p.opportunity),qualified:true,paused:false}))).map(p=>p.id);
  return {pool,qualified,demoIds};
 }
 export async function requireTopDecile(ctx:MutationCtx,p:Doc<"prospects">) {
@@ -39,16 +40,20 @@ export const upsert=internalMutation({
  returns:v.string(),
  handler:async(ctx,a)=>{
   const c=a.candidate;
-  const existing=await ctx.db.query("prospects").withIndex("by_owner_campaign_website",q=>q.eq("ownerId",a.ownerId).eq("campaignKey",a.campaignKey).eq("website",c.website)).first();
+  let existing=null;
+  for(const site of websiteVariants(c.website)){
+   existing=await ctx.db.query("prospects").withIndex("by_owner_campaign_website",q=>q.eq("ownerId",a.ownerId).eq("campaignKey",a.campaignKey).eq("website",site)).first();
+   if(existing)break;
+  }
   const stamp=Date.now();
-  const changes={name:c.name.slice(0,160),website:c.website,trade:c.trade.slice(0,120),city:c.city.slice(0,160),score:c.score,qualified:c.qualified,scoreReasons:c.reasons.slice(0,12),evidence:c.evidence.slice(0,5),updatedAt:stamp};
+  const changes={name:c.name.slice(0,160),website:c.website,trade:c.trade.slice(0,120),city:c.city.slice(0,160),score:c.score,qualified:c.qualified,...(c.opportunity!==undefined?{opportunity:Math.max(0,Math.min(100,c.opportunity))}:{}),scoreReasons:c.reasons.slice(0,14),evidence:c.evidence.slice(0,5),updatedAt:stamp};
   if(existing){
    if(existing.status!=="paused"&&existing.status!=="blocked"&&!["Demo","Outreach","Convert","Produce"].includes(existing.stage)){
-    await ctx.db.patch(existing._id,changes);
+    await ctx.db.patch(existing._id,{...changes,...(!existing.contact&&c.contact?{contact:c.contact.slice(0,250)}:{})});
    }
    return existing._id;
   }
-  const id=await ctx.db.insert("prospects",{...changes,ownerId:a.ownerId,campaignKey:a.campaignKey,contact:"",notes:"Source: "+c.url+"\n"+c.reasons.join("; "),stage:"Qualify",status:c.qualified?"queued":"needs_approval",source:"firecrawl-search"});
+  const id=await ctx.db.insert("prospects",{...changes,ownerId:a.ownerId,campaignKey:a.campaignKey,contact:(c.contact??"").slice(0,250),notes:"Source: "+c.url+"\n"+c.reasons.join("; "),stage:"Qualify",status:c.qualified?"queued":"needs_approval",source:"firecrawl-search"});
   await ctx.db.insert("sources",{ownerId:a.ownerId,prospectId:id,url:c.url,summary:(c.description+"\n"+c.markdown).slice(0,12000),checksum:"",verifiedAt:stamp});
   await ctx.db.insert("activities",{ownerId:a.ownerId,prospectId:id,kind:"discovered",summary:"Public web search indexed and qualified: score "+c.score+"; "+(c.qualified?"passed":"review"),timestamp:stamp});
   return id;
@@ -70,7 +75,7 @@ export async function discoveryCore(ctx:ActionCtx,user:string,trade:string,city:
  const key=process.env.FIRECRAWL_API_KEY;
  if(!key||!key.startsWith("fc-"))throw Error("Firecrawl API key not configured");
  await limiter.limit(ctx,"discovery",{key:user,throws:true});
- const searchQueries=[trade+" business "+city+" official website",trade+" contractor services "+city+" locally owned"];
+ const searchQueries=buildSearchQueries(trade,city,Number(process.env.DISCOVERY_QUERIES)||3);
   const hits: {url:string;title?:string;description?:string;markdown?:string}[]=[];
   let credits=0;
   for(const query of searchQueries){
@@ -84,17 +89,20 @@ export async function discoveryCore(ctx:ActionCtx,user:string,trade:string,city:
    credits+=Math.max(0,data.creditsUsed||0);
    hits.push(...(data.data?.web||[]));
   }
-  const seen=new Set<string>();let qualified=0,skipped=0,imported=0;
+  const seen=new Set<string>();let qualified=0,skipped=0,imported=0,withContact=0;
   for(const hit of hits){
    const candidate=candidateFromSearch(hit,trade,city);
-   if(!candidate||seen.has(candidate.website)){skipped++;continue;}
-   seen.add(candidate.website);
+   if(!candidate||seen.has(siteKey(candidate.website))){skipped++;continue;}
+   seen.add(siteKey(candidate.website));
    const assessed=qualifyBusiness(candidate);
-   await ctx.runMutation(internal.autopilot.upsert,{ownerId:user,campaignKey:cohort(trade,city),candidate:{...candidate,score:assessed.score,qualified:assessed.qualified,reasons:assessed.reasons,evidence:assessed.evidence}});
+   const opp=assessOpportunity(candidate.markdown);
+   const contact=extractContacts(candidate.description+"\n"+candidate.markdown,candidate.website).best;
+   if(contact)withContact++;
+   await ctx.runMutation(internal.autopilot.upsert,{ownerId:user,campaignKey:cohort(trade,city),candidate:{...candidate,score:assessed.score,qualified:assessed.qualified,reasons:[...assessed.reasons,...(opp.assessed&&opp.opportunity>0?opp.reasons:[])],evidence:assessed.evidence,...(opp.assessed?{opportunity:opp.opportunity}:{}),...(contact?{contact}:{})}});
    imported++;
    if(assessed.qualified)qualified++;
   }
-  return {provider:"Firecrawl",queries:searchQueries.length,searchHits:hits.length,imported,qualified,skipped,creditsReported:credits,trade,city,emailsSent:0};
+  return {provider:"Firecrawl",queries:searchQueries.length,searchHits:hits.length,imported,qualified,withContact,skipped,creditsReported:credits,trade,city,emailsSent:0};
 }
 export const discoverInternal=internalAction({
  args:{ownerId:v.string(),trade:v.string(),city:v.string()},returns:v.any(),
@@ -138,9 +146,9 @@ export const draftAfterDemo=mutation({
   if(!concepts.some(c=>c.status==="approved"&&!!c.html))throw Error("Verified demo required before drafting");
   const prior=await ctx.db.query("outreach").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).first();
   if(prior)return {created:false,id:prior._id};
-  const draft=composeOutreach({name:p.name,trade:p.trade,city:p.city,findings:p.scoreReasons||[]});
+  const draft=composeOutreach({name:p.name,trade:p.trade,city:p.city,findings:p.scoreReasons||[]},{postalAddress:process.env.OUTREACH_POSTAL_ADDRESS});
   const id=await ctx.db.insert("outreach",{ownerId:user,prospectId:p._id,subject:draft.subject,body:draft.body,status:"draft",updatedAt:Date.now()});
-  await ctx.db.insert("activities",{ownerId:user,prospectId:p._id,kind:"autodraft",summary:"Private demo completed; outreach draft created; zero emails sent",timestamp:Date.now()});
+  await ctx.db.insert("activities",{ownerId:user,prospectId:p._id,kind:"autodraft",summary:"Private demo completed; outreach draft created; zero emails sent"+(draft.issues.length?" — before sending: "+draft.issues.join("; "):""),timestamp:Date.now()});
   return {created:true,id};
  }
 });
@@ -243,9 +251,9 @@ export const draftForService=internalMutation({
   if(!concepts.some(c=>c.status==="approved"&&!!c.html))throw Error("No completed demo");
   const existing=await ctx.db.query("outreach").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).first();
   if(existing)return {created:false,emailsSent:0};
-  const content=composeOutreach({name:p.name,trade:p.trade,city:p.city,findings:p.scoreReasons||[]});
+  const content=composeOutreach({name:p.name,trade:p.trade,city:p.city,findings:p.scoreReasons||[]},{postalAddress:process.env.OUTREACH_POSTAL_ADDRESS});
   await ctx.db.insert("outreach",{ownerId:p.ownerId,prospectId:p._id,subject:content.subject,body:content.body,status:"draft",updatedAt:Date.now()});
-  await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"autodraft",summary:"Outreach draft prepared; not sent",timestamp:Date.now()});
+  await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"autodraft",summary:"Outreach draft prepared; not sent"+(content.issues.length?" — before sending: "+content.issues.join("; "):""),timestamp:Date.now()});
   return {created:true,emailsSent:0};
  }
 });
