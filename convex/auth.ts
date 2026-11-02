@@ -33,7 +33,11 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 
   return betterAuth({
     baseURL: siteUrl,
-    trustedOrigins: [siteUrl],
+    // The app is served from both the canonical domain (SITE_URL, which stays
+    // the OAuth baseURL/callback) and the project's default Vercel domain.
+    // Both origins must be trusted or every sign-in method fails with
+    // "Invalid origin" when the user lands on the default domain.
+    trustedOrigins: [siteUrl, "https://prospect-studio-kappa.vercel.app"],
     database: authComponent.adapter(ctx),
     // AgentID must never implicitly attach to an existing owner identity.
     account: { accountLinking: { enabled: false } },
