@@ -13,6 +13,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [activationCode, setActivationCode] = useState("");
   const [activate, setActivate] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState("");
 
   if (isLoading) return <div className="grid min-h-dvh place-items-center bg-background"><LoaderCircle className="size-7 animate-spin text-primary" aria-label="Verifying session"/></div>;
@@ -49,6 +50,18 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <div className="space-y-1.5"><label htmlFor="studio-password" className="text-xs font-semibold">{activate ? "Choose a secure password (10+ characters)" : "Password"}</label><Input id="studio-password" type="password" autoComplete={activate?"new-password":"current-password"} minLength={10} required value={password} onChange={e=>setPassword(e.target.value)}/></div>
       {error&&<p role="alert" className="text-xs text-destructive">{error}</p>}
       <Button type="submit" className="w-full" disabled={busy||password.length<10||(activate&&activationCode.length<16)}>{busy?"Working…":activate?"Activate account":"Sign in"}</Button>
+      <div className="flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-border"/><span className="text-[11px] font-medium text-muted-foreground">or</span><span className="h-px flex-1 bg-border"/></div>
+      <Button type="button" variant="outline" className="w-full" disabled={busy||googleBusy} onClick={async () => {
+        setGoogleBusy(true); setError("");
+        try {
+          const result = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+          if (result?.error) { setError(result.error.message ?? "Google sign-in failed"); setGoogleBusy(false); }
+          // On success the auth client redirects the browser to Google.
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Google sign-in failed");
+          setGoogleBusy(false);
+        }
+      }}>{googleBusy?"Redirecting to Google…":"Sign in with Google"}</Button>
       <button type="button" className="w-full text-center text-xs text-primary underline-offset-4 hover:underline" onClick={()=>{setActivate(v=>!v);setError("");setPassword("");}}>{activate?"Back to sign in":"First time? Activate with AgentMail code"}</button>
       <p className="text-[11px] leading-5 text-muted-foreground">The workspace uses per-user Convex authentication. Public requests cannot access records, even with the deployment URL.</p>
     </form>
