@@ -11,7 +11,8 @@
     "agentos:smoke": "node --import tsx scripts/agentos-smoke.ts",
     "agentos:actor-check": "node --import tsx scripts/agentos-actor-test.ts",
     "pi:readiness": "node --import tsx scripts/pi-durable-readiness.mts",
-    "verify": "npm run test:unit && npm run lint && tsc --noEmit --incremental false"
+    "verify": "npm run test:unit && npm run lint && npm run typecheck",
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",
@@ -66,6 +67,8 @@
     "playwright": "^1.64.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
+    "turbo": "^2.11.10",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "npm@11.6.2"
 }

@@ -50,3 +50,9 @@ The GitHub token currently lacks the separate `workflow` scope. GitHub rejected 
 ## Vercel-native build quality gate
 
 GitHub `workflow` scope remains unavailable, so the pending GitHub Actions workflow cannot yet be installed. As an enforceable alternative, `npm run build` now performs the unit suite, lint and TypeScript typechecking before the Next.js production compilation. Since the Git-linked Vercel project uses the repository's build script, any regression blocks an automatic deployment even without GitHub Actions. Keep the pending workflow for additional HTTP smoke tests and PR checks once the token scope is authorized.
+
+## Vercel CI beta migration (2026-11-02)
+
+The owner selected **Vercel CI** instead of GitHub Actions. This release installs Turborepo 2.11.10 and the root `turbo.json`. Tasks tagged `ci` are `test:unit`, `lint`, and `typecheck`, each independently run and cached by Vercel CI. The repo-local NPM `packageManager` declaration ensures Turborepo resolves the single-package workspace. The Next.js build retains `npm run verify` as an additional fail-closed deployment build gate.
+
+Vercel CI must be explicitly enabled for the private `mplsjohnnycage/prospect-studio` repository using `vercel ci enable --scope johnnyc --remote origin` after pushing the configuration. Confirm its first pushed-commit run on the Vercel dashboard and the PR before calling it active. The previous pending GitHub Actions YAML has been retired; no `workflow` permission is needed for Vercel CI. Do not merge until all Vercel CI tasks and the Vercel preview check pass.
