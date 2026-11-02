@@ -77,7 +77,7 @@ export function assessOpportunity(markdown: string, year = new Date().getFullYea
   const years = [...text.matchAll(/(?:©|&copy;|copyright)\s*(?:\d{4}\s*[-–]\s*)?(20\d{2}|19\d{2})/gi)].map(m => Number(m[1]));
   if (years.length && year - Math.max(...years) >= 3) add(20, `footer copyright is ${Math.max(...years)}, so the site looks stale`);
 
-  if (!/\b(?:contact|call us|call today|request (?:a )?quote|free (?:estimate|quote)|get (?:a )?quote|book (?:now|online)|schedule)\b/.test(lower)) add(20, "no clear call to action or quote path");
+  if (!/\b(?:contact|call us|call today|request (?:a )?quote|free (?:estimates?|quotes?)|get (?:a )?quotes?|book (?:now|online)|schedule)\b/.test(lower)) add(20, "no clear call to action or quote path");
   if (!PHONE_RE.test(text)) add(10, "no phone number visible");
   PHONE_RE.lastIndex = 0;
   if (!/\b(?:reviews?|testimonials?|rated|5[- ]star|five[- ]star|licensed|insured|bonded|bbb|years? (?:of )?experience|family[- ]owned)\b/.test(lower)) add(10, "no visible reviews or trust signals");

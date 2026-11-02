@@ -28,6 +28,10 @@ test("a stale thin site has more opportunity than a strong modern one",()=>{
  assert.ok(weak.reasons.some(r=>/copyright is 2016/.test(r)));
  assert.ok(weak.opportunity<=100);
 });
+test("plural \"free estimates\" counts as a call to action",()=>{
+ const o=assessOpportunity("# North Star Painting\nInterior and exterior painting. Free estimates on every job. Licensed and insured, reviews on request, see our services and projects gallery. Call (612) 555-0147. \u00a9 2026".padEnd(700,"."),2026);
+ assert.ok(!o.reasons.some(r=>/call to action/.test(r)));
+});
 test("ranking keeps fit dominant and ignores missing opportunity",()=>{
  assert.equal(rankScore(80),80);
  assert.equal(rankScore(80,undefined),80);

@@ -26,7 +26,7 @@ export function qualifyBusiness(p:DiscoveredBusiness):ScoredBusiness{
  const tradeMatch=tokens.some(t=>content.includes(t))||tokens.some(t=>p.name.toLowerCase().includes(t));
  const localMatch=Boolean(cityToken)&&content.includes(cityToken);
  const liveEvidence=p.markdown.trim().length>=120;
- const contactEvidence=/\b(?:contact|call us|call today|request (?:a )?quote|free estimate|email us|schedule|book now)\b/i.test(content);
+ const contactEvidence=/\b(?:contact|call us|call today|request (?:a )?quote|free estimates?|email us|schedule|book now)\b/i.test(content);
  const detailsEvidence=/\b(?:services|projects|portfolio|our work|about us|residential|commercial|gallery)\b/i.test(content);
  const reasons:string[]=[];
  let score=20;
