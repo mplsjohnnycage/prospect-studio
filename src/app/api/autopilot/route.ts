@@ -1,3 +1,4 @@
+import {randomUUID} from "node:crypto";
 import {getConvex,api} from "@/lib/convex-server";
 import {buildConceptInVercelSandbox} from "@/lib/vercel-sandbox";
 import type {Id} from "../../../../convex/_generated/dataModel";
@@ -37,8 +38,12 @@ export async function POST(req:Request){
   const built:{prospectId:string;name:string;checksum:string;draftCreated:boolean}[]=[];
   const errors:{prospectId:string;message:string}[]=[];
   for(const p of pending) {
+   const claimId=randomUUID();
+   let claimConceptId:Id<"concepts">|undefined;
    try{
-    const {prospectId,conceptId,alreadyBuilt}=await convex.mutation(api.autopilot.prepareDemo,{prospectId:p.id as Id<"prospects">});
+    const {prospectId,conceptId,alreadyBuilt,buildStatus}=await convex.mutation(api.autopilot.prepareDemo,{prospectId:p.id as Id<"prospects">,claimId});
+    if(buildStatus==="busy"){errors.push({prospectId,message:"Concept build already running; no duplicate sandbox launched"});continue;}
+    if(buildStatus==="acquired")claimConceptId=conceptId;
     if(!alreadyBuilt){
      const detail=await convex.query(api.prospects.detail,{id:prospectId});
      if(!detail)throw Error("Prospect record unavailable");
@@ -46,11 +51,14 @@ export async function POST(req:Request){
      if(!concept)throw Error("Approved concept missing");
      const input:ConceptInput={prospectId,businessName:detail.prospect.name,trade:detail.prospect.trade,city:detail.prospect.city,direction:concept.direction as ConceptInput["direction"]};
      const artifact=await buildConceptInVercelSandbox(input);
-     await convex.mutation(api.prospects.saveConceptPreview,{prospectId,conceptId,html:artifact.html,sha256:artifact.sha256});
+     await convex.mutation(api.prospects.saveConceptPreview,{prospectId,conceptId,html:artifact.html,sha256:artifact.sha256,claimId});
     }
     const draft=await convex.mutation(api.autopilot.draftAfterDemo,{prospectId});
     built.push({prospectId,name:p.name,checksum:"verified",draftCreated:draft.created});
    }catch(e){errors.push({prospectId:p.id,message:e instanceof Error?e.message:"Unable to build"})}
+   finally{
+    if(claimConceptId)await convex.mutation(api.prospects.releaseConceptBuild,{prospectId:p.id as Id<"prospects">,conceptId:claimConceptId,claimId}).catch(()=>{});
+   }
   }
   return Response.json({rankedQualified:ranking.qualified,allowedDemos:ranking.demoBudget,built,errors,remaining:Math.max(0,ranking.demoBudget-ranking.eligible.filter((p:{stage:string})=>["Demo","Outreach","Convert","Produce"].includes(p.stage)).length-built.length),emailsSent:0});
  }catch(e){return Response.json({error:e instanceof Error?e.message:"Autopilot failed"},{status:400})}

@@ -1,3 +1,4 @@
+import {randomUUID} from "node:crypto";
 import {createClient} from "rivetkit/client";
 import type {registry} from "@/lib/rivet";
 import {getConvex,api} from "@/lib/convex-server";
@@ -27,16 +28,25 @@ export async function POST(req:Request){
    prospectId:d.prospect._id,businessName:d.prospect.name,trade:d.prospect.trade,city:d.prospect.city,
    direction:c.direction as ConceptInput["direction"]
   };
-  let result:ConceptBuildResult;
-  if(sandboxEnabled){
-    const {buildConceptInVercelSandbox}=await import("@/lib/vercel-sandbox");
-    result=await buildConceptInVercelSandbox(input);
-  }else{
-    const client=createClient<typeof registry>(process.env.RIVET_ENDPOINT!);
-    const actor=client.prospectActor.getOrCreate([d.prospect._id]);
-    result=await actor.generateConcept(input);
+  const claimId=randomUUID();
+  const state=await convex.mutation(api.prospects.claimConceptBuild,{prospectId:d.prospect._id,conceptId:c._id,claimId});
+  if(state==="built"){const latest=await convex.query(api.prospects.detail,{id:d.prospect._id});const saved=latest?.concepts.find(x=>x._id===c._id);return Response.json({alreadyBuilt:true,checksum:saved?.sha256});}
+  if(state==="busy")return Response.json({error:"Concept build already running. Retry after the existing build finishes."},{status:409,headers:{"Retry-After":"30"}});
+  try {
+    let result:ConceptBuildResult;
+    if(sandboxEnabled){
+      const {buildConceptInVercelSandbox}=await import("@/lib/vercel-sandbox");
+      result=await buildConceptInVercelSandbox(input);
+    }else{
+      const client=createClient<typeof registry>(process.env.RIVET_ENDPOINT!);
+      const actor=client.prospectActor.getOrCreate([d.prospect._id]);
+      result=await actor.generateConcept(input);
+    }
+    await convex.mutation(api.prospects.saveConceptPreview,{prospectId:d.prospect._id,conceptId:c._id,html:result.html,sha256:result.sha256,claimId});
+    return Response.json({ok:true,checksum:result.sha256,runtime:result.runtime,vmType:result.vmType,verified:result.verified});
+  }finally{
+    // If building fails the claim is released; successful saves clear it atomically.
+    await convex.mutation(api.prospects.releaseConceptBuild,{prospectId:d.prospect._id,conceptId:c._id,claimId}).catch(()=>{});
   }
-  await convex.mutation(api.prospects.saveConceptPreview,{prospectId:d.prospect._id,conceptId:c._id,html:result.html,sha256:result.sha256});
-  return Response.json({ok:true,checksum:result.sha256,runtime:result.runtime,vmType:result.vmType,verified:result.verified});
  }catch(error){return Response.json({error:error instanceof Error?error.message:"Verified concept build failed"},{status:400})}
 }

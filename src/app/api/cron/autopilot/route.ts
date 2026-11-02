@@ -1,3 +1,4 @@
+import {randomUUID} from "node:crypto";
 import {timingSafeEqual} from "node:crypto";
 import {ConvexHttpClient} from "convex/browser";
 import {api} from "../../../../../convex/_generated/api";
@@ -23,13 +24,20 @@ export async function GET(req:Request){
   const failures:{id:string;error:string}[]=[];
   // Keep daily spend bounded to one isolated VM build per invocation.
   for(const id of (run.eligibleIds||[]).slice(0,1) as Id<"prospects">[]){
+   const claimId=randomUUID();
+   let conceptId:Id<"concepts">|undefined;
    try{
-    const prep=await client.action(api.autopilotService.prepare,{token:secret,prospectId:id});
+    const prep=await client.action(api.autopilotService.prepare,{token:secret,prospectId:id,claimId});
+    if(prep.buildStatus==="busy"){built.push({id,name:prep.name,status:"already-building"});continue;}
     if(prep.alreadyBuilt){built.push({id,name:prep.name,status:"already-built"});continue;}
+    conceptId=prep.conceptId;
     const artifact=await buildConceptInVercelSandbox({prospectId:id,businessName:prep.name,trade:prep.trade,city:prep.city,direction:prep.direction as ConceptInput["direction"]});
-    const draft=await client.action(api.autopilotService.saveAndDraft,{token:secret,prospectId:id,conceptId:prep.conceptId,html:artifact.html,sha256:artifact.sha256});
+    const draft=await client.action(api.autopilotService.saveAndDraft,{token:secret,prospectId:id,conceptId:prep.conceptId,html:artifact.html,sha256:artifact.sha256,claimId});
     built.push({id,name:prep.name,status:draft.created?"demo-and-draft":"demo-existing-draft"});
    }catch(e){failures.push({id,error:e instanceof Error?e.message:"Build failed"});}
+   finally{
+    if(conceptId)await client.action(api.autopilotService.release,{token:secret,prospectId:id,conceptId,claimId}).catch(()=>{});
+   }
   }
   return Response.json({provider:"Firecrawl",research:run.research,qualifiedPoolDemos:run.demoBudget,built,failures,emailsSent:0});
  }catch(e){return Response.json({error:e instanceof Error?e.message:"Scheduled autopilot failed"},{status:500});}

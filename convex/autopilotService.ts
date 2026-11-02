@@ -3,7 +3,7 @@ import {internal} from "./_generated/api";
 import {v} from "convex/values";
 import type {Id} from "./_generated/dataModel";
 type DailyRun={idle:true;reason:string;emailsSent:number}|{idle:false;campaign:{trade:string;city:string};research:unknown;eligibleIds:Id<"prospects">[];demoBudget:number;emailsSent:number};
-type Prepared={prospectId:Id<"prospects">;conceptId:Id<"concepts">;alreadyBuilt:boolean;name:string;trade:string;city:string;direction:string};
+type Prepared={prospectId:Id<"prospects">;conceptId:Id<"concepts">;alreadyBuilt:boolean;buildStatus:"built"|"busy"|"acquired";name:string;trade:string;city:string;direction:string};
 type Drafted={created:boolean;emailsSent:number};
 const authorize=(token:string)=>{const secret=process.env.AUTOPILOT_SERVICE_SECRET;if(!secret||secret.length<32||token!==secret)throw Error("Unauthorized service invocation");};
 export const runDaily=action({args:{token:v.string()},returns:v.any(),handler:async(ctx,a):Promise<DailyRun>=>{
@@ -20,11 +20,15 @@ export const runDaily=action({args:{token:v.string()},returns:v.any(),handler:as
   throw e;
  }
 }});
-export const prepare=action({args:{token:v.string(),prospectId:v.id("prospects")},returns:v.any(),handler:async(ctx,a):Promise<Prepared>=>{
- authorize(a.token);return await ctx.runMutation(internal.autopilot.prepareForService,{prospectId:a.prospectId});
+export const prepare=action({args:{token:v.string(),prospectId:v.id("prospects"),claimId:v.string()},returns:v.any(),handler:async(ctx,a):Promise<Prepared>=>{
+ authorize(a.token);return await ctx.runMutation(internal.autopilot.prepareForService,{prospectId:a.prospectId,claimId:a.claimId});
 }});
-export const saveAndDraft=action({args:{token:v.string(),prospectId:v.id("prospects"),conceptId:v.id("concepts"),html:v.string(),sha256:v.string()},returns:v.any(),handler:async(ctx,a):Promise<Drafted>=>{
+export const saveAndDraft=action({args:{token:v.string(),prospectId:v.id("prospects"),conceptId:v.id("concepts"),html:v.string(),sha256:v.string(),claimId:v.string()},returns:v.any(),handler:async(ctx,a):Promise<Drafted>=>{
  authorize(a.token);
- await ctx.runMutation(internal.autopilot.saveForService,{prospectId:a.prospectId,conceptId:a.conceptId,html:a.html,sha256:a.sha256});
+ await ctx.runMutation(internal.autopilot.saveForService,{prospectId:a.prospectId,conceptId:a.conceptId,html:a.html,sha256:a.sha256,claimId:a.claimId});
  return await ctx.runMutation(internal.autopilot.draftForService,{prospectId:a.prospectId});
+}});
+export const release=action({args:{token:v.string(),prospectId:v.id("prospects"),conceptId:v.id("concepts"),claimId:v.string()},returns:v.boolean(),handler:async(ctx,a):Promise<boolean>=>{
+ authorize(a.token);
+ return await ctx.runMutation(internal.autopilot.releaseForService,{prospectId:a.prospectId,conceptId:a.conceptId,claimId:a.claimId});
 }});
