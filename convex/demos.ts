@@ -162,8 +162,9 @@ export const generateWorker=internalAction({
    // if anything here fails, the already-checked page is kept.
    let qualityScore:number|undefined,reviewNotes:string[]|undefined;
    try{
-    if(left()>150_000){
-     const r=await gen(DEMO_REVIEW_SYSTEM,buildReviewPrompt(html,facts),0.2,2048,Math.min(90_000,left()-60_000));
+    if(left()<=100_000)console.log("demo review skipped: only",left(),"ms left");
+    if(left()>100_000){
+     const r=await gen(DEMO_REVIEW_SYSTEM,buildReviewPrompt(html,facts),0.2,2048,Math.min(90_000,left()-30_000));
      const review=parseReview(r.text);
      console.log("demo review",review?review.score:"unparsed","left ms",left());
      if(review){
