@@ -11,7 +11,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
   caps: { demosPerDay: 10, draftsPerDay: 40, promotesPerDay: 200, fetchesPerHost: 30 },
   allowlist: [], evalsPassed: {},
 };
-export const TASK_KINDS = ["sense", "qualify", "build", "reach", "learn", "digest", "recheck"] as const;
+export const TASK_KINDS = ["sense", "qualify", "build", "reach", "learn", "digest", "recheck", "reviews"] as const;
 export type TaskKind = typeof TASK_KINDS[number];
 export const TASK_STATUSES = ["queued", "claimed", "done", "failed", "parked"] as const;
 /** Start of the current calendar day in America/Chicago (daily caps reset at local midnight). */
@@ -22,7 +22,7 @@ export function chicagoDayStart(now: number): number {
 }
 /** Same alert text inside the window is not logged again. */
 export const ALERT_DEDUPE_MS = 6 * 3600_000;
-export const KIND_STAGE: Record<TaskKind, AgentStage> = { sense: "sense", qualify: "qualify", build: "build", reach: "reach", learn: "learn", digest: "learn", recheck: "qualify" };
+export const KIND_STAGE: Record<TaskKind, AgentStage> = { sense: "sense", qualify: "qualify", build: "build", reach: "reach", learn: "learn", digest: "learn", recheck: "qualify", reviews: "qualify" };
 /** Actions the agent may never take at any level. Enforced by having no code path, and asserted here. */
 export const NEVER_AUTONOMOUS = ["send_email", "send_reply", "set_price", "accept_proposal", "spend"] as const;
 

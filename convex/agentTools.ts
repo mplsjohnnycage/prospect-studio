@@ -305,7 +305,7 @@ export const AGENT_TOOLS:Record<string,AgentTool>={
   title:"Request an agent step",
   description:"Queue one loop step (qualify, build, reach, recheck) for a prospect. It runs only when the loop is enabled and the stage's level and daily caps allow it. Reach creates a draft for Johnny's approval; nothing is sent.",
   args:{kind:v.union(v.literal("qualify"),v.literal("build"),v.literal("reach"),v.literal("recheck")),prospectId},write:true,
-  run:async(ctx,ownerId,a)=>safe(async()=>({taskId:await ctx.runMutation(internal.agent.enqueueInternal,{ownerId,kind:a.kind,prospectId:a.prospectId as never})})),
+  run:async(ctx,ownerId,a)=>safe(async()=>({taskId:await ctx.runMutation(internal.agent.enqueueInternal,{ownerId,kind:a.kind,prospectId:a.prospectId as never,rerun:true})})),
  }),
  promote_records:defineTool({
   title:"Promote sourced records",

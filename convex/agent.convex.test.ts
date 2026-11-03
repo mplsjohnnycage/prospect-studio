@@ -212,3 +212,27 @@ test("alerts are deduped; settings changes patch only their own field; cleanup r
  expect(await t.mutation(internal.agent.cleanup,{})).toBeGreaterThan(0);
  expect(await t.run(ctx=>ctx.db.query("agentTasks").collect())).toHaveLength(0);
 });
+
+test("reviews: Brand DNA quotes become sourced facts, care gate updates; no data changes nothing; MCP-style rerun re-queues a done task",async()=>{
+ vi.stubEnv("AUTOPILOT_SERVICE_SECRET","test-secret");
+ const {t,p}=await setup(false,["desktop:3apdbkg"]);
+ const post=(body:unknown)=>t.fetch("/agent/reviews",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer test-secret"},body:JSON.stringify(body)});
+ const placeUrl="https://www.google.com/maps/place/acme";
+ expect(await (await post({ownerId:"u1",worker:"desktop:3apdbkg",data:{prospectId:p._id,placeUrl,reviews:[]}})).json()).toEqual({applied:false,reason:"no review data"});
+ const now=Date.now();
+ const r=await (await post({ownerId:"u1",worker:"desktop:3apdbkg",data:{prospectId:p._id,placeUrl,rating:4.8,count:52,responseRate:0.9,reviews:[{text:"Friendly crew, fixed our furnace fast and cleaned up after. Honest pricing too.",at:now-5*86400000},{text:"Friendly and honest, furnace repaired same day, would hire again.",at:now-9*86400000}]}})).json();
+ expect(r.applied).toBe(true);expect(r.quotes).toBe(2);
+ const srcs=await t.run(ctx=>ctx.db.query("sources").collect());
+ expect(srcs.filter(s=>s.summary.startsWith("Customer review")).every(s=>s.url===placeUrl)).toBe(true);
+ const pp=(await t.run(ctx=>ctx.db.get(p._id)))!;expect(pp.gates!.care).toBeGreaterThan(0);
+ const id=await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"qualify",prospectId:p._id});
+ await t.run(ctx=>ctx.db.patch(id,{status:"done"}));
+ expect(await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"qualify",prospectId:p._id})).toBe(id);
+ expect(await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"qualify",prospectId:p._id,rerun:true})).not.toBe(id);
+});
+test("promote picks the best public contact (business email over phone)",async()=>{
+ const t=convexTest(schema,modules);
+ await t.mutation(internal.pipeline.promoteInternal,{ownerId:"u1",records:[{...rec,emails:["owner@gmail.com","info@acmeheating.com"]}]});
+ const p=(await t.run(ctx=>ctx.db.query("prospects").first()))!;
+ expect(p.contact).toBe("info@acmeheating.com");expect(p.scoreReasons).toContain("Contact: email");
+});

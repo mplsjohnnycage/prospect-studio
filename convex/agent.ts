@@ -4,12 +4,13 @@
 import {action,internalAction,internalMutation,internalQuery,mutation,query} from "./_generated/server";
 import type {MutationCtx,QueryCtx} from "./_generated/server";
 import {internal} from "./_generated/api";
-import {v} from "convex/values";
+import {v,type Infer} from "convex/values";
 import type {Doc,Id} from "./_generated/dataModel";
 import {owner} from "./identity";
 import {ALERT_DEDUPE_MS,chicagoDayStart,DESKTOP_HEARTBEAT_MS,fallbackAllowed,DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,teardown,siteFactsFrom,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
 import {tryDemoIR,recordTestLead} from "./demoIr";
-import {siteHealth,recheck,calibrateWeights,type TriggerType} from "../src/lib/revenue-engine";
+import {brandDna} from "../src/lib/revenue-build";
+import {careScore,siteHealth,recheck,calibrateWeights,type TriggerType} from "../src/lib/revenue-engine";
 import {whyNowDraft} from "./autopilot";
 import {logStageCost} from "./outcomes";
 import {loadSuppressions} from "./suppressions";
@@ -62,7 +63,7 @@ export async function enqueue(ctx:MutationCtx,ownerId:string,kind:TaskKind,prosp
  const now=Date.now();
  return await ctx.db.insert("agentTasks",{ownerId,key,kind,...(prospectId?{prospectId}:{}),input,status:"queued",attempts:0,notBefore:0,createdAt:now,updatedAt:now});
 }
-export const enqueueInternal=internalMutation({args:{ownerId:v.string(),kind:taskKind,prospectId:v.optional(v.id("prospects")),input:v.optional(v.any())},returns:v.id("agentTasks"),handler:async(ctx,a)=>enqueue(ctx,a.ownerId,a.kind,a.prospectId,a.input)});
+export const enqueueInternal=internalMutation({args:{ownerId:v.string(),kind:taskKind,prospectId:v.optional(v.id("prospects")),input:v.optional(v.any()),rerun:v.optional(v.boolean())},returns:v.id("agentTasks"),handler:async(ctx,a)=>enqueue(ctx,a.ownerId,a.kind,a.prospectId,a.input,a.rerun??false)});
 type ClaimArgs={ownerId:string;worker:string;kinds?:TaskKind[]};
 export const claimNext=internalMutation({args:{ownerId:v.string(),worker:v.string(),kinds:v.optional(v.array(taskKind))},returns:claimedTask,handler:async(ctx,a)=>claimFor(ctx,a)});
 async function beat(ctx:MutationCtx,ownerId:string,worker:string,now:number){
@@ -184,6 +185,7 @@ export const runStep=internalMutation({args:{taskId:v.id("agentTasks"),site:v.op
     await ctx.db.insert("agentDigests",{ownerId:t.ownerId,kind:"daily",subject:d.subject,body:d.body,createdAt:Date.now()});
     return {digest:true};
    }
+   case "reviews":return {skipped:true,reason:"reviews run on the desktop worker"};
    default: return {skipped:true};
   }
  }});
@@ -244,7 +246,7 @@ export const dailyDigest=internalMutation({args:{},returns:v.null(),handler:asyn
 export const weeklyLearn=internalMutation({args:{},returns:v.null(),handler:async ctx=>{for(const r of await ctx.db.query("agentConfig").take(200)){if((r.config as AgentConfig).paused)continue;await enqueue(ctx,r.ownerId,"learn",undefined,{week:Math.floor(Date.now()/(7*DAY))});}return null;}});
 
 // ---------- Johnny asks for one step at L1 (e.g. build this demo, draft this one) ----------
-export const request=mutation({args:{kind:v.union(v.literal("qualify"),v.literal("recheck"),v.literal("build"),v.literal("reach")),prospectId:v.id("prospects")},returns:v.id("agentTasks"),handler:async(ctx,a)=>{const user=await owner(ctx);const p=await ctx.db.get(a.prospectId);if(!p||p.ownerId!==user)throw Error("Prospect not found");return enqueue(ctx,user,a.kind,a.prospectId,{},true);}});
+export const request=mutation({args:{kind:v.union(v.literal("qualify"),v.literal("recheck"),v.literal("build"),v.literal("reach"),v.literal("reviews")),prospectId:v.id("prospects")},returns:v.id("agentTasks"),handler:async(ctx,a)=>{const user=await owner(ctx);const p=await ctx.db.get(a.prospectId);if(!p||p.ownerId!==user)throw Error("Prospect not found");return enqueue(ctx,user,a.kind,a.prospectId,a.kind==="reviews"?{name:p.name,city:p.city}:{},true);}});
 /** Unpark (retry) or cancel a parked/failed task. */
 export const retryTask=mutation({args:{taskId:v.id("agentTasks")},returns:v.null(),handler:async(ctx,a)=>{const user=await owner(ctx);const t=await ctx.db.get(a.taskId);if(!t||t.ownerId!==user)throw Error("Task not found");if(t.status!=="parked"&&t.status!=="failed")return null;await ctx.db.patch(t._id,{status:"queued",attempts:0,notBefore:0,error:undefined,updatedAt:Date.now()});return null;}});
 export const cancelTask=mutation({args:{taskId:v.id("agentTasks")},returns:v.null(),handler:async(ctx,a)=>{const user=await owner(ctx);const t=await ctx.db.get(a.taskId);if(!t||t.ownerId!==user)throw Error("Task not found");if(t.status==="done")return null;await ctx.db.patch(t._id,{status:"failed",leaseUntil:undefined,error:"Cancelled by Johnny",updatedAt:Date.now()});return null;}});
@@ -333,3 +335,28 @@ export const cleanup=internalMutation({args:{},returns:v.number(),handler:async 
  if(n>=900)await ctx.scheduler.runAfter(60_000,internal.agent.cleanup,{});
  return n;
 }});
+
+// ---------- Items 14 + 16: reviews from the desktop worker -> Care gate + Brand DNA (links only) ----------
+// Free only: the desktop worker reads the public Google Business Profile at low volume (Johnny accepted the ToS risk).
+// No review data -> nothing changes (gated off).
+export const reviewInput=v.object({prospectId:v.id("prospects"),placeUrl:v.string(),rating:v.optional(v.number()),count:v.optional(v.number()),responseRate:v.optional(v.number()),
+ reviews:v.array(v.object({text:v.string(),at:v.optional(v.number()),url:v.optional(v.string())})),photos:v.optional(v.array(v.object({url:v.string(),caption:v.optional(v.string())})))});
+export async function ingestReviewsFor(ctx:MutationCtx,ownerId:string,a:Infer<typeof reviewInput>){
+ const p=await ctx.db.get(a.prospectId);if(!p||p.ownerId!==ownerId)throw Error("Prospect not found");
+ if(!/^https:\/\/(www\.)?google\.[a-z.]+\/maps\//.test(a.placeUrl))throw Error("placeUrl must be a public Google Maps link");
+ const reviews=a.reviews.filter(r=>r.text.trim().length>=10).slice(0,40).map(r=>({text:r.text.trim().slice(0,600),url:r.url&&/^https:/.test(r.url)?r.url:a.placeUrl,at:r.at}));
+ if(!reviews.length&&a.count===undefined)return {applied:false,reason:"no review data"};
+ const now=Date.now(),month=30*DAY;
+ const care=careScore({count:a.count,rating:a.rating,responseRate:a.responseRate,lastReviewAt:reviews.reduce((m,r)=>Math.max(m,r.at??0),0)||undefined,
+  countThisMonth:reviews.filter(r=>r.at&&now-r.at<=month).length,countPrevMonth:reviews.filter(r=>r.at&&now-r.at>month&&now-r.at<=2*month).length},now);
+ const dna=brandDna(reviews.map(r=>({text:r.text,url:r.url})),a.photos??[]);
+ const gates=p.gates?{...p.gates,care:care.score}:undefined;
+ const reasons=[...(p.scoreReasons??[]).filter(r=>!r.startsWith("Care:")),...care.reasons.map(r=>"Care: "+r)].slice(0,16);
+ await ctx.db.patch(p._id,{...(gates?{gates}:{}),scoreReasons:reasons,...(care.spike&&(p.triggerType??"none")==="none"?{triggerType:care.spike.type,triggerDate:care.spike.date,triggerSource:a.placeUrl}:{}),updatedAt:now});
+ // Review quotes become sourced facts, so the DemoIR demo and the draft can quote what customers say (each links to its review).
+ const have=new Set((await ctx.db.query("sources").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).take(50)).map(s=>s.summary));
+ for(const q of dna.quotes){const summary="Customer review: \u201c"+q.text+"\u201d";if(!have.has(summary))await ctx.db.insert("sources",{ownerId,prospectId:p._id,url:q.sourceUrl,summary,checksum:"review:"+q.text.length+":"+q.text.slice(0,24),verifiedAt:now});}
+ await ctx.db.insert("activities",{ownerId,prospectId:p._id,kind:"brand_dna",summary:("Brand DNA ("+dna.tone+"): "+(dna.themes.join(", ")||"no repeated themes")+" · "+dna.quotes.length+" quotes · care "+care.score+(dna.photoLinks.length?" · "+dna.photoLinks.length+" photo links":"")).slice(0,400),timestamp:now});
+ return {applied:true,care:care.score,themes:dna.themes,quotes:dna.quotes.length};
+}
+export const httpReviews=internalMutation({args:{ownerId:v.string(),worker:v.string(),data:reviewInput},returns:v.any(),handler:async(ctx,a)=>{checkWorkerName(a.worker);const cfg=await loadConfig(ctx,a.ownerId);if(!mayClaim(cfg,a.worker))throw Error("Worker not on the allowlist");return await ingestReviewsFor(ctx,a.ownerId,a.data);}});

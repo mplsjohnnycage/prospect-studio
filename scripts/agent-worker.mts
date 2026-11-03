@@ -19,14 +19,14 @@ const client=new ConvexHttpClient(env("CONVEX_URL"));
 // Prefer the HTTP door (secret in the Authorization header). AGENT_LEGACY_ARGS=1 keeps the old mutation path during transition.
 const site=(process.env.CONVEX_SITE_URL??env("CONVEX_URL").replace(/\.convex\.cloud\/?$/,".convex.site")).replace(/\/$/,"");
 const legacy=process.env.AGENT_LEGACY_ARGS==="1";
-async function door<T>(op:"claim"|"renew"|"complete",body:Record<string,unknown>):Promise<T>{
+async function door<T>(op:"claim"|"renew"|"complete"|"reviews",body:Record<string,unknown>):Promise<T>{
  const r=await fetch(site+"/agent/"+op,{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+process.env.AUTOPILOT_SERVICE_SECRET},body:JSON.stringify(body)});
  const j=await r.json() as T&{error?:string};if(!r.ok)throw Error(j.error??"HTTP "+r.status);return j;
 }
 const secret=env("AUTOPILOT_SERVICE_SECRET"),ownerId=env("OWNER_ID"),worker=env("WORKER");
-type Claimed={_id:Id<"agentTasks">;kind:string;leaseId:string;input?:{url?:string}};
+type Claimed={_id:Id<"agentTasks">;kind:string;leaseId:string;prospectId?:string;input?:{url?:string}};
 async function once():Promise<boolean>{
- const t=(legacy?await client.mutation(api.agent.workerClaim,{secret,ownerId,worker,kinds:["recheck","sense"]}):await door("claim",{ownerId,worker,kinds:["recheck","sense"]})) as Claimed|null;
+ const t=(legacy?await client.mutation(api.agent.workerClaim,{secret,ownerId,worker,kinds:["recheck","sense","reviews"]}):await door("claim",{ownerId,worker,kinds:["recheck","sense","reviews"]})) as Claimed|null;
  if(!t)return false;
  const startedAt=Date.now();let lost=false,last=Date.now();
  const renew=setInterval(async()=>{
@@ -36,6 +36,8 @@ async function once():Promise<boolean>{
  try{
   let result:unknown={};
   if(t.kind==="recheck"&&t.input?.url){const s=Date.now();try{const r=await fetch(t.input.url,{signal:AbortSignal.timeout(8000)});result=siteHealth({url:r.url,status:r.status,https:r.url.startsWith("https:"),html:(await r.text()).slice(0,200_000),loadMs:Date.now()-s});}catch{result=siteHealth({url:t.input.url,dnsFailed:true});}}
+  if(t.kind==="reviews"&&t.prospectId){const {scrapeReviews}=await import("./scrape-reviews.mjs");const data=await scrapeReviews(t.prospectId,t.input as {name?:string;city?:string;placeUrl?:string}|undefined);
+   result=data?await door("reviews",{ownerId,worker,data}):{applied:false,reason:"no review data found"};}
   if(t.kind==="sense"){await promisify(execFile)("node",["--import","tsx","scripts/discover-local.mts","--source","mpls,stp","--days","7","--limit","200"]);
    if(existsSync(".data/promote.json")){const recs=JSON.parse(readFileSync(".data/promote.json","utf8")) as unknown[];result={promotable:recs.length,note:"promote via MCP promote_records in batches of 200"};}}
   clearInterval(renew);

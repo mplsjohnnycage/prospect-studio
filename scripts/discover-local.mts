@@ -45,6 +45,13 @@ async function fromPermits(which:"mpls"|"stp"):Promise<RawRecord[]>{
  if(d.error)throw Error(which+": "+d.error.message);
  return permitsToContractors((d.features??[]).map(x=>x.attributes),f);
 }
+/** Which tile (index into tiles) each record falls in, per source. Records without coordinates are counted separately. */
+export function tileCoverage(recs:{source:string;lat?:number;lon?:number}[],tiles:[number,number,number,number][]){
+ const m=new Map<string,number>();let noCoords=0;
+ for(const r of recs){if(r.lat===undefined||r.lon===undefined){noCoords++;continue;}
+  const i=tiles.findIndex(([s,w,n,e])=>r.lat!>=s&&r.lat!<n&&r.lon!>=w&&r.lon!<e);if(i<0)continue;const k=r.source+"|"+i;m.set(k,(m.get(k)??0)+1);}
+ return {rows:[...m].map(([k,records])=>({source:k.split("|")[0],tile:+k.split("|")[1],records})),noCoords};
+}
 /** RFC 4180-ish CSV (quoted fields with commas/quotes), enough for SBA FOIA and SOS exports. */
 export function parseCsv(text:string):Record<string,string>[]{
  const rows:string[][]=[];let row:string[]=[],f="",q=false;
@@ -77,7 +84,7 @@ async function main(){
  }
  const sba=arg("sba-file");if(sba){const rs=fromSbaRows(parseCsv(readFileSync(sba,"utf8")));counts.sba=rs.length;all.push(...rs);}
  // Item 18 grid sweep: log which Twin Cities tiles a source covered so coverage gaps are visible.
- if(process.argv.includes("--grid")){const tiles=gridTiles(TWIN_CITIES_BBOX,Number(arg("grid-step","0.05")));counts.gridTiles=tiles.length;}
+ const gridOn=process.argv.includes("--grid");
  const sos=arg("sos-file");if(sos){const rs=fromSosFile(sos);counts.mn_sos=rs.length;all.push(...rs);}
  const recs=dedupeRecords(all);
  const db=openStore();
@@ -93,6 +100,11 @@ async function main(){
   const d=shouldPromote(r,g,existing);
   if(d.promote)promote.push({recordId:r.id,identityKey:r.identityKey,source:r.source,sourceUrl:r.sourceUrl,fetchedAt:r.fetchedAt,name:r.name,city:r.city,...(r.trade?{trade:r.trade}:{}),...(r.phone?{phone:r.phone}:{}),...(r.website?{website:r.website}:{}),gates:g.gates,tier:g.tier,total:g.total,reasons:g.reasons,triggerType:g.trigger.type,...(g.trigger.date?{triggerDate:g.trigger.date}:{}),...(g.trigger.source?{triggerSource:g.trigger.source}:{})});
  }
+ // Item 18 grid sweep: record which Twin Cities tiles each source covered (records with coordinates), so gaps are visible.
+ if(gridOn){const tiles=gridTiles(TWIN_CITIES_BBOX,Number(arg("grid-step","0.05")));const cov=tileCoverage(recs,tiles);
+  db.exec("CREATE TABLE IF NOT EXISTS sweep_tiles(source TEXT,tile INTEGER,records INTEGER,swept_at INTEGER,PRIMARY KEY(source,tile))");
+  const st=db.prepare("INSERT OR REPLACE INTO sweep_tiles VALUES(?,?,?,?)");for(const c of cov.rows)st.run(c.source,c.tile,c.records,Date.now());
+  counts.gridTiles=tiles.length;counts.gridCovered=new Set(cov.rows.map(c=>c.tile)).size;counts.noCoords=cov.noCoords;}
  writeFileSync(".data/promote.json",JSON.stringify(promote,null,1));
  const total=(db.prepare("SELECT count(*) n FROM raw_records").get() as {n:number}).n;
  console.log(JSON.stringify({counts,deduped:recs.length,storeTotal:total,promotable:promote.length}));
