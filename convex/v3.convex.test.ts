@@ -35,3 +35,13 @@ test("outcome labels and one-click opt-out write suppression + lost label",async
  const out=await t.run(ctx=>ctx.db.query("outcomes").collect());
  expect(out.map(o=>o.kind).sort()).toEqual(["lost","viewed"]);
 });
+
+test("pay-to-production enforces order and feeds paid/live outcomes",async()=>{
+ const t=convexTest(schema,modules);
+ await t.mutation(internal.pipeline.promoteInternal,{ownerId:"u1",records:[rec(9)]});
+ const p=(await t.run(ctx=>ctx.db.query("prospects").first()))!;
+ await expect(t.mutation(internal.production.advanceInternal,{ownerId:"u1",prospectId:p._id,step:"site_live"})).rejects.toThrow();
+ for(const s of ["paid","repo_created","domain_connected","backend_live","site_live"] as const)await t.mutation(internal.production.advanceInternal,{ownerId:"u1",prospectId:p._id,step:s,...(s==="paid"?{amount:2500}:{})});
+ const out=await t.run(ctx=>ctx.db.query("outcomes").collect());
+ expect(out.map(o=>o.kind).sort()).toEqual(["live","paid"]);
+});
