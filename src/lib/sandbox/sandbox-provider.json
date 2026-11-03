@@ -1,0 +1,11 @@
+{
+  "_doc": "Docker Sandboxes ('Docker sandbox cloud') provider for Prospect Studio. Staged 2026-11-03; NOT applied. Desktop has no sbx CLI yet; legacy `docker sandbox` is removed in Docker 29.9.2.",
+  "provider": "docker-sandboxes",
+  "cli": "sbx",
+  "host": "DESKTOP-3APDBKG",
+  "fallbackProvider": { "name": "docker-run-tier2", "image": "prospect-sandbox:local", "args": ["--network", "none", "--memory", "1g", "--cpus", "1", "--pids-limit", "256", "--read-only"] },
+  "agents": ["claude-code", "codex", "opencode", "pi", "grok", "cursor-sdk", "cli"],
+  "network": { "default": "deny", "allow": ["api.openai.com", "chatgpt.com", "auth.openai.com", "api.anthropic.com", "opencode.ai", "registry.npmjs.org"], "allowHostLoopback": false },
+  "resources": { "maxConcurrent": 1, "memory": "1g", "cpus": 1, "diskGb": 5, "wallClockMinutes": 20, "note": "Desktop ~1.7 GB free RAM, WSL cap 6 GB: one sandbox at a time." },
+  "rules": { "tierRouting": "Tier 2 only; routing only moves up and is logged", "killSwitch": "honor Convex kill switch before every launch (currently paused)", "caps": { "demosPerDay": 10, "draftsPerDay": 40 }, "neverAutonomous": ["send", "price"], "secrets": "env var names only; injected by sbx secret store, never in prompts or logs" }
+}

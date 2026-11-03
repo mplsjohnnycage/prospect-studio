@@ -26,3 +26,6 @@ node --import tsx --test src/lib/*.test.ts
 
 ## API
 `GET /api/health`; `GET/POST /api/prospects`; `GET/POST /api/prospects/:id`; `GET /api/activity`; `GET /api/actor-status`; `GET /api/providers`; `GET /api/mail`; `POST /api/research`; `GET /api/geo?lat=45&lon=-93&km=20`.
+
+## Sandbox agent options
+Docker Sandboxes (sbx) provider with seven agent options: claude-code, codex, opencode, pi, grok, cursor-sdk, cli. Registry: src/lib/sandbox/agent-options.ts; provider + Tier 2 rules: src/lib/sandbox/sandbox-provider.json. grok and cursor-sdk unverified.
