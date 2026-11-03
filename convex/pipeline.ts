@@ -30,7 +30,8 @@ export async function promoteFor(ctx:MutationCtx,ownerId:string,records:{recordI
  const {won}=await winners(ctx,ownerId);
  let added=0,duplicates=0,blocked=0;const now=Date.now();
  for(const r of records){
-  if(!r.sourceUrl){blocked++;continue;}
+  // Item 21: the typed door rejects unsourced records (no https source link) and records without a name or city.
+  if(!/^https:\/\/\S+$/.test(r.sourceUrl)||!r.name.trim()||!r.city.trim()){blocked++;continue;}
   const dup=await ctx.db.query("prospects").withIndex("by_owner_identity",q=>q.eq("ownerId",ownerId).eq("identityKey",r.identityKey)).first();
   if(dup){duplicates++;continue;}
   const hit=isSuppressed({contact:r.phone??"",website:r.website??""},sup);
