@@ -4,6 +4,7 @@ import {AgentMail} from "@agentmail/convex";
 import {components,internal} from "./_generated/api";
 import { authComponent,createAuth } from "./auth";
 import {mcp} from "./mcp";
+import {appendHttp as actorEventsAppend} from "./actorEvents";
 import {BOOKING_CSP,bookingPage,bookingThanksPage,injectBookingCta,isHumanView,parseBookingForm} from "../src/lib/booking";
 import {SENDER_BRAND} from "./demos";
 import {parseAcceptForm,proposalAcceptedPage,proposalPage} from "../src/lib/pricing";
@@ -13,6 +14,8 @@ authComponent.registerRoutesLazy(http,createAuth);
 mcp.registerRoutes(http);
 const agentmail=new AgentMail(components.agentmail);
 http.route({path:"/agentmail/webhook",method:"POST",handler:httpAction(async(ctx,request)=>agentmail.handleWebhook(ctx as unknown as Parameters<typeof agentmail.handleWebhook>[0],request))});
+// Secret-gated batch append for Rivet actor streams (env ACTOR_APPEND_SECRET).
+http.route({path:"/actor-events/append",method:"POST",handler:actorEventsAppend});
 // Public, unguessable demo links for prospects. Sandboxed so demo code cannot reach this origin.
 const DEMO_CSP=["sandbox allow-scripts allow-popups allow-forms","default-src 'none'","img-src data: blob:","style-src 'unsafe-inline' https://fonts.googleapis.com","font-src https://fonts.gstatic.com data:","script-src 'unsafe-inline'","form-action 'none'","connect-src 'none'","base-uri 'none'"].join("; ");
 const notFound=()=>new Response("<!doctype html><title>Not found</title><p style=\"font:16px system-ui;padding:40px\">This demo link is no longer available.</p>",{status:404,headers:{"content-type":"text/html; charset=utf-8","x-robots-tag":"noindex"}});

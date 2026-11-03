@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as actorEvents from "../actorEvents.js";
 import type * as agentTools from "../agentTools.js";
 import type * as alerts from "../alerts.js";
 import type * as assistant from "../assistant.js";
@@ -27,12 +28,12 @@ import type * as http from "../http.js";
 import type * as identity from "../identity.js";
 import type * as imports from "../imports.js";
 import type * as mcp from "../mcp.js";
-import type * as outreach from "../outreach.js";
 import type * as outcomes from "../outcomes.js";
+import type * as outreach from "../outreach.js";
 import type * as pipeline from "../pipeline.js";
-import type * as production from "../production.js";
 import type * as places from "../places.js";
 import type * as pricing from "../pricing.js";
+import type * as production from "../production.js";
 import type * as prospects from "../prospects.js";
 import type * as research from "../research.js";
 import type * as sales from "../sales.js";
@@ -45,6 +46,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  actorEvents: typeof actorEvents;
   agentTools: typeof agentTools;
   alerts: typeof alerts;
   assistant: typeof assistant;
@@ -65,11 +67,11 @@ declare const fullApi: ApiFromModules<{
   imports: typeof imports;
   mcp: typeof mcp;
   outcomes: typeof outcomes;
-  pipeline: typeof pipeline;
-  production: typeof production;
   outreach: typeof outreach;
+  pipeline: typeof pipeline;
   places: typeof places;
   pricing: typeof pricing;
+  production: typeof production;
   prospects: typeof prospects;
   research: typeof research;
   sales: typeof sales;
