@@ -105,11 +105,15 @@ export const currentUser = query({
     });
     const providerIds = linkedAccounts.page.map((account: { providerId?: string }) => String(account.providerId ?? ""));
     const ownerEmail = process.env.OWNER_EMAIL ?? "";
+    const extraSocialOwnerEmails = (process.env.OWNER_SOCIAL_EXTRA_EMAILS ?? "")
+      .split(",")
+      .map((address) => address.trim().toLowerCase())
+      .filter(Boolean);
     return {
       id: u._id,
       email: u.email,
       name: u.name,
-      isOwner: isOwnerAccount(u, providerIds, ownerEmail),
+      isOwner: isOwnerAccount(u, providerIds, ownerEmail, extraSocialOwnerEmails),
       isAgent: providerIds.includes("agentid"),
     };
   },
