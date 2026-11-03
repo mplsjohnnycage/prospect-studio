@@ -1,12 +1,17 @@
-// v3 items 4/5/6/7: free discovery -> local SQLite (Turso/libSQL-compatible) bulk store -> gates -> promote list.
-// Usage: node --import tsx scripts/discover-local.mts --area Oakdale --key craft --limit 10 [--no-website] [--probe]
-// Free sources only (OSM Overpass). Writes .data/raw.sqlite and .data/promote.json. Never touches Convex or sends anything.
+// v3 items 4/5/6/7/12: free discovery -> local SQLite (Turso/libSQL-compatible) bulk store -> gates -> promote list.
+// Usage: node --import tsx scripts/discover-local.mts --source mpls,stp,osm --days 30 --limit 200 [--area Oakdale --key craft --no-website] [--probe]
+// Free public sources only: Minneapolis CCS_Permits + St. Paul Building_Permits_ (ArcGIS open data) and OSM Overpass.
+// St. Paul's feed stopped updating 2025-06-30, so it uses --stp-days (default 560) and its triggers score as stale.
+// MN SOS bulk data is a mailed/emailed request form (no public download), so it is imported with --sos-file <csv> once received.
+// Writes .data/raw.sqlite and .data/promote.json. Never touches Convex or sends anything.
 import {DatabaseSync} from "node:sqlite";
-import {mkdirSync,writeFileSync} from "node:fs";
-import {osmToRecord,overpassQuery,dedupeRecords,siteHealth,fiveGates,shouldPromote,type RawRecord,type SiteProbe} from "../src/lib/revenue-engine";
+import {mkdirSync,writeFileSync,readFileSync} from "node:fs";
+import {osmToRecord,overpassQuery,dedupeRecords,siteHealth,fiveGates,shouldPromote,permitQueryUrl,permitsToContractors,openDataToRecord,PERMIT_FEEDS,DAY,type RawRecord,type SiteProbe} from "../src/lib/revenue-engine";
 
+const UA="prospect-studio-dev/0.1 (+mailto:johnnyc@agentmail.to; low-volume research)";
 const arg=(k:string,d?:string)=>{const i=process.argv.indexOf("--"+k);return i>0?process.argv[i+1]:d;};
-const area=arg("area","Oakdale")!,key=(arg("key","craft") as "craft"),limit=Math.min(25,Number(arg("limit","10")));
+const sources=arg("source","mpls,stp")!.split(",");
+const area=arg("area","Oakdale")!,key=(arg("key","craft") as "craft"),limit=Math.min(500,Number(arg("limit","200"))),days=Number(arg("days","30"));
 const noWebsite=process.argv.includes("--no-website"),probe=process.argv.includes("--probe");
 
 export function openStore(path=".data/raw.sqlite"){
@@ -18,21 +23,40 @@ export function openStore(path=".data/raw.sqlite"){
  CREATE TABLE IF NOT EXISTS promoted(identity_key TEXT PRIMARY KEY,promoted_at INTEGER);`);
  return db;
 }
+async function getJson(url:string,init:RequestInit={}){const r=await fetch(url,{...init,headers:{"user-agent":UA,...(init.headers??{})},signal:AbortSignal.timeout(45_000)});if(!r.ok)throw Error("HTTP "+r.status+" "+url.slice(0,80));return r.json();}
 async function probeSite(url?:string):Promise<SiteProbe>{
- if(!url)return {};
+ if(!url)return {unknown:true};
  const t=Date.now();
- try{const r=await fetch(url,{redirect:"follow",signal:AbortSignal.timeout(8000)});const html=(await r.text()).slice(0,200_000);return {url:r.url,status:r.status,https:r.url.startsWith("https:"),html,loadMs:Date.now()-t};}
+ try{const r=await fetch(url,{redirect:"follow",headers:{"user-agent":UA},signal:AbortSignal.timeout(8000)});const html=(await r.text()).slice(0,200_000);return {url:r.url,status:r.status,https:r.url.startsWith("https:"),html,loadMs:Date.now()-t};}
  catch{return {url,dnsFailed:true};}
 }
-async function main(){
- const q=overpassQuery(area,key,noWebsite,limit);
- let res:Response|undefined;
- for(const ep of ["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter","https://overpass.kumi.systems/api/interpreter"]){
-  try{res=await fetch(ep,{method:"POST",body:"data="+encodeURIComponent(q),headers:{"content-type":"application/x-www-form-urlencoded","user-agent":"prospect-studio-dev/0.1"},signal:AbortSignal.timeout(40_000)});if(res.ok)break;}catch{res=undefined;}
+async function fromOsm():Promise<RawRecord[]>{
+ const q=overpassQuery(area,key,noWebsite,Math.min(25,limit));
+ for(const ep of ["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter","https://overpass.private.coffee/api/interpreter","https://maps.mail.ru/osm/tools/overpass/api/interpreter"]){
+  try{const d=await getJson(ep,{method:"POST",body:"data="+encodeURIComponent(q),headers:{"content-type":"application/x-www-form-urlencoded"}}) as {elements:Parameters<typeof osmToRecord>[0][]};return d.elements.map(e=>osmToRecord(e,area)).filter((r):r is RawRecord=>!!r);}
+  catch(e){console.error("overpass",ep,String(e).slice(0,80));}
  }
- if(!res?.ok)throw Error("Overpass unavailable: HTTP "+(res?.status??"network"));
- const data=await res.json() as {elements:Parameters<typeof osmToRecord>[0][]};
- const recs=dedupeRecords(data.elements.map(e=>osmToRecord(e,area)).filter((r):r is RawRecord=>!!r));
+ return [];
+}
+async function fromPermits(which:"mpls"|"stp"):Promise<RawRecord[]>{
+ const f=PERMIT_FEEDS[which];
+ const d=await getJson(permitQueryUrl(f,Date.now()-(which==="stp"?Number(arg("stp-days","560")):days)*DAY,limit)) as {features?:{attributes:Record<string,unknown>}[];error?:{message?:string}};
+ if(d.error)throw Error(which+": "+d.error.message);
+ return permitsToContractors((d.features??[]).map(x=>x.attributes),f);
+}
+function fromSosFile(path:string):RawRecord[]{
+ const [head,...lines]=readFileSync(path,"utf8").split(/\r?\n/).filter(Boolean);
+ const cols=head.split(",").map(c=>c.trim().toLowerCase());
+ return lines.map(l=>Object.fromEntries(l.split(",").map((v,i)=>[cols[i],v.trim()]))).map(r=>openDataToRecord(r,{source:"mn_sos",datasetUrl:"https://www.sos.mn.gov/business-liens/business-help/business-data-requests/",city:String(r.city??"Minnesota"),nameField:cols.find(c=>/name/.test(c))??"name",dateField:cols.find(c=>/date/.test(c)),trigger:"new_filing",idField:cols.find(c=>/file|id/.test(c))})).filter((r):r is RawRecord=>!!r);
+}
+async function main(){
+ const all:RawRecord[]=[];const counts:Record<string,number>={};
+ for(const s of sources){
+  try{const rs=s==="osm"?await fromOsm():s==="mpls"||s==="stp"?await fromPermits(s):[];counts[s]=rs.length;all.push(...rs);}
+  catch(e){counts[s]=-1;console.error(s,String(e).slice(0,160));}
+ }
+ const sos=arg("sos-file");if(sos){const rs=fromSosFile(sos);counts.mn_sos=rs.length;all.push(...rs);}
+ const recs=dedupeRecords(all);
  const db=openStore();
  const ins=db.prepare("INSERT OR REPLACE INTO raw_records VALUES(?,?,?,?,?,?,?,?,?,?,?)");
  const gs=db.prepare("INSERT OR REPLACE INTO gate_scores VALUES(?,?,?,?,?,?,?)");
@@ -40,13 +64,14 @@ async function main(){
  const promote:unknown[]=[];
  for(const r of recs){
   ins.run(r.id,r.identityKey,r.source,r.sourceUrl,r.fetchedAt,r.name,r.city,r.trade??null,r.phone??null,r.website??null,JSON.stringify(r));
-  const site=siteHealth(probe?await probeSite(r.website):(r.website?{url:r.website}:{}));
+  const site=siteHealth(probe?await probeSite(r.website):(r.website?{url:r.website}:{unknown:true}));
   const g=fiveGates({trade:r.trade??"",site,triggers:r.trigger?[r.trigger]:[]});
   gs.run(r.identityKey,JSON.stringify(g.gates),g.tier,g.total,JSON.stringify(g.trigger),g.passed?1:0,Date.now());
   const d=shouldPromote(r,g,existing);
   if(d.promote)promote.push({record:r,gates:g});
  }
  writeFileSync(".data/promote.json",JSON.stringify(promote,null,1));
- console.log(JSON.stringify({area,key,fetched:data.elements.length,records:recs.length,noWebsite:recs.filter(r=>!r.website).length,promotable:promote.length}));
+ const total=(db.prepare("SELECT count(*) n FROM raw_records").get() as {n:number}).n;
+ console.log(JSON.stringify({counts,deduped:recs.length,storeTotal:total,promotable:promote.length}));
 }
 if(import.meta.url==="file://"+process.argv[1])main().catch(e=>{console.error(String(e));process.exit(1);});
