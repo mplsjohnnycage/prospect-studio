@@ -51,6 +51,17 @@ http.route({pathPrefix:"/book/",method:"POST",handler:httpAction(async(ctx,reque
  return new Response(bookingThanksPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref}),{status:200,headers:bookHeaders});
 })});
 // Proposal links: the packages Johnny picked for a prospect, with a "Choose" button each.
+// v3 item 3: one-click opt-out (GET shows a confirm button, POST records it; RFC 8058 List-Unsubscribe-Post compatible).
+const optToken=(request:Request)=>{const t=new URL(request.url).pathname.slice("/optout/".length).replace(/\/$/,"");return /^[a-f0-9]{32,48}$/.test(t)?t:null;};
+http.route({pathPrefix:"/optout/",method:"GET",handler:httpAction(async(_ctx,request)=>{
+ const t=optToken(request);if(!t)return new Response("Not found",{status:404});
+ return new Response('<!doctype html><meta name="robots" content="noindex"><form method="post"><p>Stop all emails from MPLS Johnny Cage?</p><button>Unsubscribe</button></form>',{headers:{"content-type":"text/html; charset=utf-8"}});
+})});
+http.route({pathPrefix:"/optout/",method:"POST",handler:httpAction(async(ctx,request)=>{
+ const t=optToken(request);if(!t)return new Response("Not found",{status:404});
+ const ok=await ctx.runMutation(internal.outcomes.optOut,{token:t});
+ return new Response(ok?"You are unsubscribed. You will not hear from us again.":"Link not recognised",{status:ok?200:404,headers:{"content-type":"text/plain; charset=utf-8"}});
+})});
 const propToken=(request:Request)=>{const t=new URL(request.url).pathname.slice("/proposal/".length).replace(/\/$/,"");return /^[A-Za-z0-9_-]{24,64}$/.test(t)?t:null;};
 http.route({pathPrefix:"/proposal/",method:"GET",handler:httpAction(async(ctx,request)=>{
  const token=propToken(request);if(!token)return notFound();

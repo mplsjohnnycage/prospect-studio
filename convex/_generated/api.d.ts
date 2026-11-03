@@ -28,6 +28,7 @@ import type * as identity from "../identity.js";
 import type * as imports from "../imports.js";
 import type * as mcp from "../mcp.js";
 import type * as outreach from "../outreach.js";
+import type * as outcomes from "../outcomes.js";
 import type * as places from "../places.js";
 import type * as pricing from "../pricing.js";
 import type * as prospects from "../prospects.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   identity: typeof identity;
   imports: typeof imports;
   mcp: typeof mcp;
+  outcomes: typeof outcomes;
   outreach: typeof outreach;
   places: typeof places;
   pricing: typeof pricing;
