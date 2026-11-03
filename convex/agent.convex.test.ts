@@ -28,7 +28,7 @@ test("allowlist empty: outside agents cannot claim; builtin can; dedupe by key",
  expect(a).toEqual(b);
  await expect(t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"chatgpt"})).rejects.toThrow(/allowlist/);
  const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});
- expect(task.kind).toBe("qualify");
+ expect(task!.kind).toBe("qualify");
 });
 test("L1: build tasks are not claimed; reach drafts with call card and never sends",async()=>{
  const {t,p}=await setup(false);
@@ -36,9 +36,9 @@ test("L1: build tasks are not claimed; reach drafts with call card and never sen
  expect(await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin",kinds:["build"]})).toBeNull();
  await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"reach",prospectId:p._id});
  const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin",kinds:["reach"]});
- const r=await t.mutation(internal.agent.runStep,{taskId:task._id});
+ const r=await t.mutation(internal.agent.runStep,{taskId:task!._id});
  expect(r.drafted).toBe(true);
- await t.mutation(internal.agent.complete,{taskId:task._id,worker:"builtin",ok:true,result:r,startedAt:Date.now()});
+ await t.mutation(internal.agent.complete,{taskId:task!._id,worker:"builtin",ok:true,result:r,startedAt:Date.now()});
  const out=await t.run(ctx=>ctx.db.query("outreach").collect());
  expect(out[0].status).toBe("draft");
  expect(out[0].body).toMatch(/13 5th Ave, Oakdale, MN 55128/);
@@ -51,17 +51,17 @@ test("spend pauses the loop; failures retry with backoff",async()=>{
  const {t,p}=await setup(false);
  await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"qualify",prospectId:p._id});
  const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});
- await t.mutation(internal.agent.complete,{taskId:task._id,worker:"builtin",ok:false,error:"boom",startedAt:Date.now(),usd:0.5});
+ await t.mutation(internal.agent.complete,{taskId:task!._id,worker:"builtin",ok:false,error:"boom",startedAt:Date.now(),usd:0.5});
  const cfg=await t.run(ctx=>ctx.db.query("agentConfig").first());
  expect((cfg!.config as {paused:boolean}).paused).toBe(true);
- const tt=await t.run(ctx=>ctx.db.get(task._id));
+ const tt=await t.run(ctx=>ctx.db.get(task!._id));
  expect(tt!.status).toBe("queued");expect(tt!.notBefore).toBeGreaterThan(Date.now());
 });
 test("digest and weekly learn write drafts only",async()=>{
  const {t}=await setup(false);
  await t.mutation(internal.agent.dailyDigest,{});
  await t.mutation(internal.agent.weeklyLearn,{});
- for(let i=0;i<2;i++){const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});await t.mutation(internal.agent.runStep,{taskId:task._id});await t.mutation(internal.agent.complete,{taskId:task._id,worker:"builtin",ok:true,startedAt:Date.now()});}
+ for(let i=0;i<2;i++){const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});await t.mutation(internal.agent.runStep,{taskId:task!._id});await t.mutation(internal.agent.complete,{taskId:task!._id,worker:"builtin",ok:true,startedAt:Date.now()});}
  const d=await t.run(ctx=>ctx.db.query("agentDigests").collect());
  expect(d.map(x=>x.kind).sort()).toEqual(["daily","weekly"]);
 });
