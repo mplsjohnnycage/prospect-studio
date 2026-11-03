@@ -52,7 +52,7 @@ export function leaseFor(worker: string): number { return worker.startsWith("des
 export function tierFor(kind: TaskKind, needs: { browser?: boolean; heavy?: boolean } = {}): "convex" | "desktop" | "sprite" { return needs.heavy ? "sprite" : needs.browser || kind === "recheck" && needs.browser ? "desktop" : "convex"; }
 
 // ---------- Alerts ----------
-export type RunRow = { status: "ok" | "error" | "skipped"; usd: number; kind: TaskKind; error?: string };
+export type RunRow = { status: "ok" | "error" | "skipped"; usd: number; kind: string; error?: string };
 export function alertsFor(runs: RunRow[], qaFailures = 0): string[] {
   const out: string[] = [];
   const last3 = runs.slice(-3);
