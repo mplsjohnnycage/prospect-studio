@@ -87,9 +87,10 @@ export function dedupeRecords(rs: RawRecord[]): RawRecord[] {
 }
 
 // ---------- Item 5: site health (free checks) ----------
-export type SiteProbe = { url?: string; status?: number; https?: boolean; html?: string; loadMs?: number; pageSpeed?: number; dnsFailed?: boolean };
+export type SiteProbe = { url?: string; status?: number; https?: boolean; html?: string; loadMs?: number; pageSpeed?: number; dnsFailed?: boolean; unknown?: boolean };
 export type SiteHealth = { state: "none" | "dead" | "weak" | "ok"; score: number; issues: string[] };
 export function siteHealth(p: SiteProbe, year = new Date().getFullYear()): SiteHealth {
+  if (p.unknown) return { state: "weak", score: 50, issues: ["Website not checked yet"] };
   if (!p.url) return { state: "none", score: 100, issues: ["No website listed"] };
   if (/business\.site/i.test(p.url)) return { state: "dead", score: 95, issues: ["Links to a Google business.site page, which Google shut down"] };
   if (p.dnsFailed || (p.status !== undefined && (p.status >= 400 || p.status === 0))) return { state: "dead", score: 90, issues: [p.dnsFailed ? "Domain does not resolve" : "Site returns HTTP " + p.status] };
@@ -295,3 +296,48 @@ export function recheck(prev: { site: SiteHealth; trigger: Trigger }, cur: { sit
 
 // ---------- Item 4 spend flag ----------
 export function paidSourceAllowed(env: Record<string, string | undefined>): boolean { return env.ALLOW_PAID_SOURCES === "true"; }
+
+// ---------- Item 4/12: city permit feeds (Minneapolis CCS_Permits, St. Paul Building_Permits_) ----------
+export type PermitFeed = { source: "mpls_open_data" | "stp_open_data"; layerUrl: string; dateField: string; nameField: string; cityField?: string; addressField?: string; typeFields: string[]; valueField?: string; defaultCity: string };
+export const PERMIT_FEEDS: Record<"mpls" | "stp", PermitFeed> = {
+  mpls: { source: "mpls_open_data", layerUrl: "https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/CCS_Permits/FeatureServer/0", dateField: "issueDate", nameField: "applicantName", cityField: "applicantCity", typeFields: ["permitType", "comments"], valueField: "permit_Value", defaultCity: "Minneapolis" },
+  stp: { source: "stp_open_data", layerUrl: "https://services1.arcgis.com/9meaaHE3uiba0zr8/arcgis/rest/services/Building_Permits_/FeatureServer/0", dateField: "ISSUEDATE", nameField: "CONTRACTORNAME", addressField: "CONTRACTORADDRESS", typeFields: ["FOLDER_TYPE", "FOLDERDESCRIPTION"], valueField: "EST_VALUE_OF_WORK", defaultCity: "Saint Paul" },
+};
+export function permitQueryUrl(f: PermitFeed, sinceMs: number, limit = 200): string {
+  const where = encodeURIComponent(`${f.dateField} >= DATE '${new Date(sinceMs).toISOString().slice(0, 10)}'`);
+  return `${f.layerUrl}/query?where=${where}&outFields=*&orderByFields=${f.dateField}%20DESC&resultRecordCount=${Math.max(1, Math.min(1000, limit))}&returnGeometry=false&f=json`;
+}
+const TRADE_WORDS: [RegExp, string][] = [[/roof/i, "roofing"], [/plumb|gasfit|water heater/i, "plumbing"], [/mechanical|hvac|furnace|heating|air cond/i, "hvac"], [/electric/i, "electrical"], [/mason|chimney|concrete/i, "masonry"], [/window|siding|door/i, "windows and siding"], [/remodel|kitchen|bath|basement/i, "remodeling"], [/deck|fence|garage/i, "carpentry"], [/demoli/i, "demolition"], [/solar/i, "solar"]];
+export function inferTrade(text: string): string { return TRADE_WORDS.find(([re]) => re.test(text))?.[1] ?? "general contractor"; }
+const BIZ_WORD = /\b(?:inc|llc|co|company|corp|plbg|plumbing|roofing|heating|electric|masonry|construction|services?|homes?|builders?|exteriors?|mechanical|air|remodeling|contracting|restoration|solar|windows?|design|renovations?)\b/i;
+const PERSON_ONLY = /^[A-Z][A-Za-z.'-]+\s+[A-Z][A-Za-z.'-]+$/;
+/** St. Paul lists "FIRST LAST BUSINESS NAME"; keep the business part when a business word is present. */
+export function cleanContractorName(raw: string): string {
+  const n = raw.replace(/\s+/g, " ").trim();
+  if (n !== n.toUpperCase()) return n;
+  const m = n.match(/^(?:[A-Z]+\s+){1,2}([A-Z][A-Z&'. -]*(?:INC|LLC|CO|COMPANY|CORP|PLBG|PLUMBING|ROOFING|HEATING|ELECTRIC|MASONRY|CONSTRUCTION|SERVICES?|HOMES?|BUILDERS?|EXTERIORS?|MECHANICAL|AIR|REMODELING)\b.*)$/);
+  const out = (m && m[1].split(" ").length >= 2 ? m[1] : n).replace(/\s+/g, " ").trim();
+  return out.replace(/\w\S*/g, w => w.length <= 3 && /^(INC|LLC|CO)$/.test(w) ? w : w[0] + w.slice(1).toLowerCase());
+}
+/** Aggregate permit rows into one sourced record per contractor, trigger = latest permit. */
+export function permitsToContractors(rows: Record<string, unknown>[], f: PermitFeed, fetchedAt = Date.now()): (RawRecord & { permitCount: number; permitValue: number })[] {
+  const m = new Map<string, RawRecord & { permitCount: number; permitValue: number; _text: string }>();
+  for (const r of rows) {
+    const rawName = String(r[f.nameField] ?? "").trim();
+    if (!rawName || /owner|homeowner|self|n\/a/i.test(rawName)) continue;
+    const name = cleanContractorName(rawName);
+    if (PERSON_ONLY.test(name) && !BIZ_WORD.test(name)) continue; // a person, not a business
+    let city = f.cityField ? String(r[f.cityField] ?? "").trim() : "";
+    if (!city && f.addressField) { const a = String(r[f.addressField] ?? ""); const mm = a.match(/\s([A-Z][A-Z .]+?)\s+MN\s+\d{5}/); city = mm ? mm[1].replace(/^.*?\b(?:AVE|ST|RD|BLVD|DR|LN|WAY|CT|PKWY|HWY|CIR|PL|TRL|STREET|AVENUE|ROAD)\b(?:\s+[NSEW]{1,2})?\s+/, "").trim() : ""; }
+    city = city ? city.replace(/\bMPLS\b/i, "Minneapolis").replace(/\w\S*/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase()) : f.defaultCity;
+    const key = identityKey({ name, city });
+    const ms = Number(r[f.dateField]); const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : undefined;
+    const text = f.typeFields.map(k => String(r[k] ?? "")).join(" ");
+    const value = Number(r[f.valueField ?? ""]) || 0;
+    const prev = m.get(key);
+    if (prev) { prev.permitCount++; prev.permitValue += value; prev._text += " " + text; if (date && (!prev.trigger?.date || date > prev.trigger.date)) prev.trigger = { type: "permit", date, source: f.layerUrl, detail: text.slice(0, 120) }; continue; }
+    m.set(key, { id: f.source + ":" + key, identityKey: key, source: f.source, sourceUrl: f.layerUrl, fetchedAt, name, city, address: f.addressField ? String(r[f.addressField] ?? "") || undefined : undefined,
+      trigger: date ? { type: "permit", date, source: f.layerUrl, detail: text.slice(0, 120) } : undefined, permitCount: 1, permitValue: value, _text: text });
+  }
+  return [...m.values()].map(({ _text, ...r }) => ({ ...r, trade: inferTrade(r.name + " " + _text) }));
+}

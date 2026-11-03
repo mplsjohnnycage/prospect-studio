@@ -95,3 +95,21 @@ test("lookalike, calibration, promote, QA, reply intent, recheck, spend flag", (
   assert.equal(E.recheck({ site: weak, trigger: E.NO_TRIGGER }, { site: ok, trigger: E.NO_TRIGGER }), "drop");
   assert.equal(E.paidSourceAllowed({}), false);
 });
+
+test("permit feeds aggregate to sourced contractor records with permit triggers", () => {
+  const f = E.PERMIT_FEEDS.stp;
+  const rows = [
+    { CONTRACTORNAME: "SCOTT SPIESS SPIESS PLBG", CONTRACTORADDRESS: "493 BEAR AVE S VADNAIS HEIGHTS MN 55127 0000", ISSUEDATE: Date.parse("2026-10-01"), FOLDER_TYPE: "Plumbing", FOLDERDESCRIPTION: "bath", EST_VALUE_OF_WORK: 9000 },
+    { CONTRACTORNAME: "SCOTT SPIESS SPIESS PLBG", CONTRACTORADDRESS: "493 BEAR AVE S VADNAIS HEIGHTS MN 55127 0000", ISSUEDATE: Date.parse("2026-10-20"), FOLDER_TYPE: "Plumbing", FOLDERDESCRIPTION: "x", EST_VALUE_OF_WORK: 1000 },
+    { CONTRACTORNAME: "Homeowner", ISSUEDATE: 1 },
+  ];
+  const out = E.permitsToContractors(rows, f, NOW);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].name, "Spiess Plbg");
+  assert.equal(out[0].city, "Vadnais Heights");
+  assert.equal(out[0].permitCount, 2);
+  assert.equal(out[0].trigger?.date, "2026-10-20");
+  assert.equal(out[0].trade, "plumbing");
+  assert.match(E.permitQueryUrl(E.PERMIT_FEEDS.mpls, 0, 5), /resultRecordCount=5/);
+  assert.equal(E.siteHealth({ unknown: true }).score, 50);
+});
