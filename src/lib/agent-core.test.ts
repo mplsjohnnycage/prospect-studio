@@ -1,3 +1,4 @@
+import { siteFactsFrom as _sf } from "./agent-core";
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as A from "./agent-core";
@@ -53,4 +54,12 @@ test("alerts, evals, features, digest", () => {
   assert.ok(A.payToLivePlan({ name: "A" }).find(s => s.step === "paid")!.auto === false);
   assert.match(A.weeklyReport([], [0.2, 0.25, 0.2, 0.15, 0.2], [0.2, 0.25, 0.2, 0.15, 0.2], 3), /need 200/);
   assert.match(A.digest({ promoted: 1, built: 0, drafted: 2, failures: 0, alerts: [], paused: true }).body, /paused/);
+});
+
+test("teardown from automated checks: dead site scores 0, a clean site scores higher", () => {
+  const you = _sf("Acme", { state: "dead", issues: ["Domain does not resolve"] });
+  const rival = _sf("Rival", { state: "ok", issues: ["No online quote form"] });
+  const r = A.teardown(you, rival);
+  assert.equal(r.score.you, 0); assert.ok(r.score.rival >= 4);
+  assert.match(r.lines.join("\n"), /Online quote\/booking: Acme no · Rival no/);
 });

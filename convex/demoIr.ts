@@ -3,6 +3,7 @@ import type {MutationCtx} from "./_generated/server";
 import type {Doc,Id} from "./_generated/dataModel";
 import {buildIR,irIssues,renderIR} from "../src/lib/revenue-build";
 import {demoQa} from "../src/lib/revenue-engine";
+import {testLead} from "../src/lib/agent-core";
 
 export type IRResult={built:true;conceptId:Id<"concepts">}|{fallback:"model";issues:string[]};
 export async function tryDemoIR(ctx:MutationCtx,p:Doc<"prospects">):Promise<IRResult>{
@@ -16,5 +17,12 @@ export async function tryDemoIR(ctx:MutationCtx,p:Doc<"prospects">):Promise<IRRe
  const conceptId=await ctx.db.insert("concepts",{ownerId:p.ownerId,prospectId:p._id,variant:"A",direction:"Conversion",description:"Deterministic DemoIR render",status:"approved",html,builtAt:now,generator:"demo-ir",qualityScore:100,updatedAt:now});
  await ctx.db.patch(p._id,{stage:"Demo",status:"needs_approval",updatedAt:now});
  await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"ai_demo",summary:"DEMO built from sourced facts (DemoIR, no model); checked, unpublished",timestamp:now});
+ await recordTestLead(ctx,p);
  return {built:true,conceptId};
+}
+/** Live demo test lead: shows the owner how a request arrives (labeled TEST, never a real customer, nothing sent). */
+export async function recordTestLead(ctx:MutationCtx,p:Doc<"prospects">){
+ const l=testLead(p.name);
+ await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"test_lead",summary:`${l.name} · ${l.phone} · ${l.email}\n${l.message}`,timestamp:Date.now()});
+ return l;
 }

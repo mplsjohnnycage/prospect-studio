@@ -168,3 +168,18 @@ test("approval queue: lists drafts with call card; approve never sends; opted-ou
  expect(o.status).toBe("approved");expect(o.sentAt).toBeUndefined();
  expect((await u.query(api.agent.optOuts,{})).suppressed).toHaveLength(0);
 });
+
+test("workflow pieces: reach with rival writes a teardown; test lead is labeled TEST; paid posts the next pay-to-live step",async()=>{
+ const {t,p}=await setup(false);
+ await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"reach",prospectId:p._id});
+ const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});
+ await t.mutation(internal.agent.runStep,{taskId:task!._id,site:{state:"dead",score:90,issues:["Domain does not resolve"]},rival:{name:"Rival HVAC",site:{state:"ok",score:10,issues:[]}}});
+ const u=t.withIdentity({subject:"u1"});
+ await u.mutation(api.agent.sendTestLead,{prospectId:p._id});
+ await u.mutation(api.production.advanceStep,{prospectId:p._id,step:"paid",amount:1});
+ const kinds=(await t.run(ctx=>ctx.db.query("activities").collect())).map(a=>a.kind+":"+a.summary);
+ expect(kinds.some(k=>k.startsWith("teardown:Teardown vs Rival HVAC (0/6 vs 6/6"))).toBe(true);
+ expect(kinds.some(k=>k.startsWith("test_lead:TEST LEAD"))).toBe(true);
+ expect(kinds.some(k=>/^pay_to_live:paid done\. Next: repo created/.test(k))).toBe(true);
+ expect(await t.run(ctx=>ctx.db.query("outreach").collect())).toHaveLength(1);
+});

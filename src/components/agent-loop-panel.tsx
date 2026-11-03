@@ -50,10 +50,12 @@ export function AgentTrace({prospectId}:{prospectId:string}){
  const rows=useQuery(api.agent.trace,{prospectId:prospectId as Id<"prospects">}) as {at:number;type:string;what:string;usd?:number}[]|undefined;
  const request=useMutation(api.agent.request);
  const ask=async(kind:"qualify"|"build"|"reach"|"recheck")=>{try{await request({kind,prospectId:prospectId as Id<"prospects">});toast.success(kind+" queued");}catch(e){toast.error(e instanceof Error?e.message:"Failed");}};
- const card=(rows??[]).filter(r=>r.what.startsWith("call_card:")).pop();
+ const testLeadM=useMutation(api.agent.sendTestLead);
+ const latest=(k:string)=>(rows??[]).filter(r=>r.what.startsWith(k+":")).pop()?.what.replace(new RegExp("^"+k+":\\s*"),"");
+ const card=latest("call_now")??latest("call_card"),td=latest("teardown"),ptl=latest("pay_to_live");
  return <div className="space-y-2 border-b p-3">
-  <div className="flex flex-wrap gap-1">{(["recheck","build","reach"] as const).map(k=><Button key={k} size="sm" variant="outline" className="h-7 text-[11px]" onClick={()=>ask(k)}>Agent: {k=="reach"?"draft":k}</Button>)}</div>
-  {card&&<pre className="whitespace-pre-wrap rounded bg-muted p-2 text-[11px]">{card.what.replace(/^call_card:\s*/,"")}</pre>}
+  <div className="flex flex-wrap gap-1">{(["recheck","build","reach"] as const).map(k=><Button key={k} size="sm" variant="outline" className="h-7 text-[11px]" onClick={()=>ask(k)}>Agent: {k=="reach"?"draft":k}</Button>)}<Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={()=>testLeadM({prospectId:prospectId as Id<"prospects">}).then(()=>toast.success("Test lead logged (labeled TEST, nothing sent)"),e=>toast.error(String(e)))}>Demo test lead</Button></div>
+  {[card,td,ptl].filter(Boolean).map((x,i)=><pre key={i} className="whitespace-pre-wrap rounded bg-muted p-2 text-[11px]">{x}</pre>)}
   <ul className="max-h-32 overflow-auto text-[11px] text-muted-foreground">{(rows??[]).slice(-12).map((r,i)=><li key={i}>{new Date(r.at).toLocaleString()} · {r.type} · {r.what.slice(0,120)}</li>)}</ul>
  </div>;
 }

@@ -7,8 +7,8 @@ import {internal} from "./_generated/api";
 import {v} from "convex/values";
 import type {Doc,Id} from "./_generated/dataModel";
 import {owner} from "./identity";
-import {DESKTOP_HEARTBEAT_MS,fallbackAllowed,DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
-import {tryDemoIR} from "./demoIr";
+import {DESKTOP_HEARTBEAT_MS,fallbackAllowed,DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,teardown,siteFactsFrom,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
+import {tryDemoIR,recordTestLead} from "./demoIr";
 import {siteHealth,recheck,calibrateWeights,type TriggerType} from "../src/lib/revenue-engine";
 import {whyNowDraft} from "./autopilot";
 import {logStageCost} from "./outcomes";
@@ -118,7 +118,7 @@ async function renewFor(ctx:MutationCtx,a:{taskId:Id<"agentTasks">;worker:string
 }
 
 // ---------- Handlers (one step each, all free, none send) ----------
-export const runStep=internalMutation({args:{taskId:v.id("agentTasks"),site:v.optional(v.any())},returns:v.any(),
+export const runStep=internalMutation({args:{taskId:v.id("agentTasks"),site:v.optional(v.any()),rival:v.optional(v.object({name:v.string(),site:v.any()}))},returns:v.any(),
  handler:async(ctx,a)=>{
   const t=await ctx.db.get(a.taskId);if(!t||t.status!=="claimed")throw Error("Task is not claimed");
   const p=t.prospectId?await ctx.db.get(t.prospectId):null;
@@ -149,6 +149,9 @@ export const runStep=internalMutation({args:{taskId:v.id("agentTasks"),site:v.op
      const decision=recheck(prev,{site:a.site,trigger:prev.trigger});
      if(decision==="drop"){await ctx.db.patch(p._id,{status:"paused",notes:(p.notes??"")+"\nAgent: site looks fixed; dropped before drafting",updatedAt:Date.now()});return {skipped:true,decision};}
      if(decision==="upgrade")await ctx.db.patch(p._id,{tier:"top",updatedAt:Date.now()});}
+    // "Your site vs competitor" teardown for Johnny's call (activity only; not pasted into the email, so no unsourced claims go out).
+    if(a.site&&a.rival){const td=teardown(siteFactsFrom(p.name,a.site),siteFactsFrom(a.rival.name,a.rival.site));
+     await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"teardown",summary:("Teardown vs "+a.rival.name+" ("+td.score.you+"/6 vs "+td.score.rival+"/6, automated checks)\n"+td.lines.join("\n")).slice(0,700),timestamp:Date.now()});}
     const draft=await whyNowDraft(ctx,p);
     const id=await ctx.db.insert("outreach",{ownerId:p.ownerId,prospectId:p._id,subject:draft.subject,body:draft.body,status:"draft",updatedAt:Date.now()});
     await ctx.db.insert("sendSnapshots",{ownerId:p.ownerId,prospectId:p._id,outreachId:id,...(p.gates?{gates:p.gates}:{}),triggerType:p.triggerType??"none",...(p.triggerDate?{triggerDate:p.triggerDate}:{}),variant:draft.variant,subject:draft.subject,createdAt:Date.now()});
@@ -193,12 +196,20 @@ export const drain=internalAction({args:{ownerId:v.string(),max:v.optional(v.num
    try{
     let site;
     if((t.kind==="recheck"||t.kind==="reach")&&t.prospectId){const w=await ctx.runQuery(internal.agent.websiteOf,{prospectId:t.prospectId});if(w)site=await fetchSite(w);}
-    const result=await ctx.runMutation(internal.agent.runStep,{taskId:t._id,...(site?{site}:{})});
+    let rival;
+    if(t.kind==="reach"&&site&&t.prospectId){const r=await ctx.runQuery(internal.agent.rivalOf,{prospectId:t.prospectId});if(r)rival={name:r.name,site:await fetchSite(r.website)};}
+    const result=await ctx.runMutation(internal.agent.runStep,{taskId:t._id,...(site?{site}:{}),...(rival?{rival}:{})});
     await ctx.runMutation(internal.agent.complete,{taskId:t._id,worker:"builtin",leaseId:t.leaseId!,ok:true,result,startedAt,skipped:!!(result as {skipped?:boolean})?.skipped});
    }catch(e){await ctx.runMutation(internal.agent.complete,{taskId:t._id,worker:"builtin",leaseId:t.leaseId!,ok:false,error:e instanceof Error?e.message:String(e),startedAt});}
   }
   return n;
  }});
+/** Best-scored same-trade, same-city business with a website: the teardown comparison. */
+export const rivalOf=internalQuery({args:{prospectId:v.id("prospects")},returns:v.union(v.object({name:v.string(),website:v.string()}),v.null()),handler:async(ctx,a)=>{
+ const p=await ctx.db.get(a.prospectId);if(!p)return null;
+ const rows=await ctx.db.query("prospects").withIndex("by_owner_updated",q=>q.eq("ownerId",p.ownerId)).order("desc").take(300);
+ const r=rows.filter(x=>x._id!==p._id&&x.trade===p.trade&&x.city===p.city&&/^https?:\/\//.test(x.website)).sort((x,y)=>y.score-x.score)[0];
+ return r?{name:r.name,website:r.website}:null;}});
 export const websiteOf=internalQuery({args:{prospectId:v.id("prospects")},returns:v.union(v.string(),v.null()),handler:async(ctx,a)=>{const p=await ctx.db.get(a.prospectId);return p?.website&&/^https?:\/\//.test(p.website)?p.website:null;}});
 
 // ---------- Scheduler: enqueue from state, then drain. Exits at once when paused. ----------
@@ -294,3 +305,6 @@ export const optOuts=query({args:{},returns:v.any(),handler:async ctx=>{
  const oneClick=outcomes.filter(o=>o.kind==="lost"&&o.reason==="opt_out");
  return {suppressed:sup.map(r=>({id:r._id,kind:r.kind,value:r.value,reason:r.reason??"",createdAt:r.createdAt})),oneClickOptOuts:oneClick.length,lastOptOutAt:oneClick[0]?.at??null,footer:process.env.OUTREACH_POSTAL_ADDRESS?"custom":"13 5th Ave, Oakdale, MN 55128"};
 }});
+
+// ---------- Live demo test lead: shows the owner how a request arrives (labeled TEST, never a real customer, nothing sent) ----------
+export const sendTestLead=mutation({args:{prospectId:v.id("prospects")},returns:v.any(),handler:async(ctx,a)=>{const user=await owner(ctx);const p=await ctx.db.get(a.prospectId);if(!p||p.ownerId!==user)throw Error("Prospect not found");return await recordTestLead(ctx,p);}});

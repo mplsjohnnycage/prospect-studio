@@ -106,6 +106,13 @@ export function teardown(you: SiteFacts, rival: SiteFacts): { lines: string[]; s
   return { lines, score: { you: checks.filter(([, f]) => f(you)).length, rival: checks.filter(([, f]) => f(rival)).length } };
 }
 
+/** Map an automated site check onto teardown facts (each "no" is backed by a check issue, never guessed). */
+export function siteFactsFrom(name: string, h: { state: string; issues: string[] }): SiteFacts {
+  const has = (re: RegExp) => h.issues.some(i => re.test(i));
+  const live = h.state !== "none" && h.state !== "dead";
+  return { name, url: live ? "yes" : undefined, https: live && !has(/https|ssl|secure/i), mobile: live && !has(/mobile|viewport|phone/i), quoteForm: live && !has(/form|quote|booking|contact/i), reviewsShown: live && !has(/review/i), loadMs: live ? (has(/slow|load|speed/i) ? 5000 : 1000) : undefined };
+}
+
 // ---------- Feature: test lead capture (forwards a labeled TEST lead, never a real customer) ----------
 export function testLead(business: string): { name: string; phone: string; email: string; message: string; test: true } {
   return { name: "TEST LEAD (demo)", phone: "(555) 010-0000", email: "test-lead@example.com", message: `This is a test lead from your ${business} DEMO, showing how requests reach you.`, test: true };
