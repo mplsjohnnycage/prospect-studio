@@ -7,7 +7,7 @@ import {internal} from "./_generated/api";
 import {v,type Infer} from "convex/values";
 import type {Doc,Id} from "./_generated/dataModel";
 import {owner} from "./identity";
-import {ALERT_DEDUPE_MS,chicagoDayStart,DESKTOP_HEARTBEAT_MS,fallbackAllowed,DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,teardown,siteFactsFrom,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
+import {DESKTOP_ONLY,DEFAULT_LOOKALIKE_WEIGHT,MIN_WINNERS,blendFit,embedText,proposeLookalikeWeight,ALERT_DEDUPE_MS,chicagoDayStart,DESKTOP_HEARTBEAT_MS,fallbackAllowed,DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,teardown,siteFactsFrom,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
 import {tryDemoIR,recordTestLead} from "./demoIr";
 import {brandDna} from "../src/lib/revenue-build";
 import {careScore,siteHealth,recheck,calibrateWeights,type TriggerType} from "../src/lib/revenue-engine";
@@ -87,7 +87,7 @@ async function claimFor(ctx:MutationCtx,a:ClaimArgs):Promise<ClaimedTask>{ {
    await ctx.db.patch(t._id,{status:n.status,notBefore:n.notBefore??0,leaseUntil:undefined,error:"Lease expired ("+(t.claimedBy??"?")+")",updatedAt:now});
   }
   const cands=(await ctx.db.query("agentTasks").withIndex("by_owner_status_notBefore",q=>q.eq("ownerId",a.ownerId).eq("status","queued").lte("notBefore",now)).take(25))
-   .filter(t=>!a.kinds||a.kinds.includes(t.kind));
+   .filter(t=>!a.kinds||a.kinds.includes(t.kind)).filter(t=>!DESKTOP_ONLY.includes(t.kind)||a.worker.startsWith("desktop:"));
   for(const t of cands){
    const d=mayRun(cfg,t.kind,used);
    if(!d.allow)continue;
@@ -175,7 +175,12 @@ export const runStep=internalMutation({args:{taskId:v.id("agentTasks"),site:v.op
     const labeled=snaps.filter(s=>s.gates).map(s=>({gates:s.gates!,won:paid.has(s.prospectId)}));
     const prior=[0.2,0.25,0.2,0.15,0.2];
     const body=weeklyReport(ev.filter(e=>e.at>Date.now()-7*DAY).map(e=>({prospectId:e.prospectId,kind:e.kind,at:e.at})),calibrateWeights(labeled,prior),prior,labeled.length);
-    await ctx.db.insert("agentDigests",{ownerId:t.ownerId,kind:"weekly",subject:"Prospect loop: weekly outcome report",body,createdAt:Date.now()});
+    const ps=await ctx.db.query("prospects").withIndex("by_owner_updated",q=>q.eq("ownerId",t.ownerId)).order("desc").take(1000);
+    const won=new Set(await winnerIds(ctx,t.ownerId));
+    const prop=proposeLookalikeWeight(ps.filter(p=>(p.scoreReasons??[]).some(r=>r.startsWith("Lookalike (embedding)"))).map(p=>({lookalike:p.lookalike,won:won.has(p._id)})));
+    const cfgNow=await patchConfig(ctx,t.ownerId,()=>({lookalikeWeightProposed:prop.weight}));
+    const lookLine="\n\nLookalike (EmbeddingGemma): "+prop.labels+" embedded prospects"+(prop.gap!==undefined?", winners score "+prop.gap+" points higher":"; not enough winners yet")+". Weight in use "+(cfgNow.lookalikeWeight??DEFAULT_LOOKALIKE_WEIGHT)+", proposed "+prop.weight+" (apply it in Settings).";
+    await ctx.db.insert("agentDigests",{ownerId:t.ownerId,kind:"weekly",subject:"Prospect loop: weekly outcome report",body:body+lookLine,createdAt:Date.now()});
     return {labels:labeled.length};
    }
    case "digest":{
@@ -185,7 +190,7 @@ export const runStep=internalMutation({args:{taskId:v.id("agentTasks"),site:v.op
     await ctx.db.insert("agentDigests",{ownerId:t.ownerId,kind:"daily",subject:d.subject,body:d.body,createdAt:Date.now()});
     return {digest:true};
    }
-   case "reviews":return {skipped:true,reason:"reviews run on the desktop worker"};
+   case "reviews":case "embed":return {skipped:true,reason:t.kind+" runs on the desktop worker"};
    default: return {skipped:true};
   }
  }});
@@ -234,8 +239,20 @@ export const plan=internalMutation({args:{ownerId:v.string()},returns:v.number()
    else if(p.stage==="Qualify"&&cfg.levels.build>=2&&(p.tier==="top"||p.tier==="strong")){await enqueue(ctx,a.ownerId,"build",p._id);n++;}
    else if(p.stage==="Demo"&&cfg.levels.reach>=3){await enqueue(ctx,a.ownerId,"reach",p._id);n++;}
   }
-  return n;
+  // Item 22: embed winners and gate survivors on the desktop (input carries public facts + winner ids). Capped per tick.
+  const wonIds=await winnerIds(ctx,a.ownerId);
+  let e=0;
+  for(const p of [...ps.filter(x=>wonIds.includes(x._id)),...ps.filter(x=>!wonIds.includes(x._id)&&x.gates&&x.qualified)]){
+   if(e>=40)break;
+   if((p.scoreReasons??[]).some(r=>r.startsWith("Lookalike (embedding)"))&&!wonIds.includes(p._id))continue;
+   await enqueue(ctx,a.ownerId,"embed",p._id,{text:embedText({name:p.name,trade:p.trade,city:p.city,reasons:p.scoreReasons,triggerType:p.triggerType}),won:wonIds.includes(p._id),winners:wonIds});e++;
+  }
+  return n+e;
  }});
+async function winnerIds(ctx:QueryCtx|MutationCtx,ownerId:string):Promise<Id<"prospects">[]>{
+ const ev=await ctx.db.query("outcomes").withIndex("by_owner_time",q=>q.eq("ownerId",ownerId)).order("desc").take(2000);
+ return [...new Set(ev.filter(x=>x.kind==="paid"||x.kind==="replied").map(x=>x.prospectId))].slice(0,200);
+}
 export const owners=internalQuery({args:{},returns:v.array(v.string()),handler:async ctx=>(await ctx.db.query("agentConfig").take(50)).filter(r=>!(r.config as AgentConfig).paused).map(r=>r.ownerId)});
 export const tick=internalAction({args:{},returns:v.null(),handler:async ctx=>{
  // Each owner's drain is its own scheduled action, so one owner's slow sites never hold up another.
@@ -360,3 +377,30 @@ export async function ingestReviewsFor(ctx:MutationCtx,ownerId:string,a:Infer<ty
  return {applied:true,care:care.score,themes:dna.themes,quotes:dna.quotes.length};
 }
 export const httpReviews=internalMutation({args:{ownerId:v.string(),worker:v.string(),data:reviewInput},returns:v.any(),handler:async(ctx,a)=>{checkWorkerName(a.worker);const cfg=await loadConfig(ctx,a.ownerId);if(!mayClaim(cfg,a.worker))throw Error("Worker not on the allowlist");return await ingestReviewsFor(ctx,a.ownerId,a.data);}});
+
+// ---------- Item 22: lookalike results from the desktop embed task ----------
+export const httpLookalike=internalMutation({args:{ownerId:v.string(),worker:v.string(),prospectId:v.id("prospects"),score:v.optional(v.number()),winners:v.number(),model:v.string(),endpointOk:v.boolean(),error:v.optional(v.string())},returns:v.any(),
+ handler:async(ctx,a)=>{
+  checkWorkerName(a.worker);const cfg=await loadConfig(ctx,a.ownerId);if(!mayClaim(cfg,a.worker)||!a.worker.startsWith("desktop:"))throw Error("Worker not on the allowlist");
+  const now=Date.now();
+  await patchConfig(ctx,a.ownerId,()=>({embed:{ok:a.endpointOk,at:now,model:a.model,...(a.error?{error:a.error.slice(0,200)}:{})}}));
+  const p=await ctx.db.get(a.prospectId);if(!p||p.ownerId!==a.ownerId)throw Error("Prospect not found");
+  // Fallback: endpoint down or too few winners -> keep the existing gate-based score untouched.
+  if(!a.endpointOk||a.score===undefined||a.winners<MIN_WINNERS)return {applied:false,reason:!a.endpointOk?"embed endpoint down":"fewer than "+MIN_WINNERS+" embedded winners"};
+  const score=Math.max(0,Math.min(100,Math.round(a.score)));
+  const baseFit=p.gates?.fit;
+  const w=cfg.lookalikeWeight??DEFAULT_LOOKALIKE_WEIGHT;
+  const prevBase=Number((p.scoreReasons??[]).find(r=>r.startsWith("Lookalike (embedding)"))?.match(/base fit (\d+)/)?.[1]);
+  const base=Number.isFinite(prevBase)?prevBase:baseFit;
+  const fit=base===undefined?undefined:blendFit(base,score,w);
+  const reasons=[...(p.scoreReasons??[]).filter(r=>!r.startsWith("Lookalike (embedding)")),"Lookalike (embedding): "+score+" vs "+a.winners+" winners, weight "+w+(base!==undefined?", base fit "+base:"")].slice(0,16);
+  await ctx.db.patch(p._id,{lookalike:score,scoreReasons:reasons,...(p.gates&&fit!==undefined?{gates:{...p.gates,fit}}:{}),updatedAt:now});
+  return {applied:true,lookalike:score,fit};
+ }});
+export const lookalikeOf=query({args:{prospectId:v.id("prospects")},returns:v.object({fit:v.union(v.number(),v.null()),lookalike:v.union(v.number(),v.null()),source:v.union(v.literal("embedding"),v.literal("gates"),v.literal("none")),detail:v.string()}),
+ handler:async(ctx,a)=>{
+  const user=await owner(ctx);const p=await ctx.db.get(a.prospectId);if(!p||p.ownerId!==user)throw Error("Prospect not found");
+  const r=(p.scoreReasons??[]).find(x=>x.startsWith("Lookalike (embedding)"));
+  return {fit:p.gates?.fit??null,lookalike:p.lookalike??null,source:(r?"embedding":p.lookalike!==undefined?"gates":"none") as "embedding"|"gates"|"none",detail:r??(p.lookalike!==undefined?"Gate-based lookalike (embedding not available yet)":"No lookalike yet")};
+ }});
+export const applyLookalikeWeight=mutation({args:{},returns:v.number(),handler:async ctx=>{const user=await owner(ctx);const c=await patchConfig(ctx,user,cur=>({lookalikeWeight:cur.lookalikeWeightProposed??DEFAULT_LOOKALIKE_WEIGHT}));return c.lookalikeWeight!;}});

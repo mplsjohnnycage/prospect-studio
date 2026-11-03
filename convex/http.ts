@@ -92,11 +92,12 @@ async function agentAuth(request:Request){
  if(!s||h.length!==s.length+7||!h.startsWith("Bearer "))return false;
  let d=0;const x=h.slice(7);for(let i=0;i<s.length;i++)d|=x.charCodeAt(i)^s.charCodeAt(i);return d===0;
 }
-for(const op of ["claim","renew","complete","reviews"] as const)http.route({path:"/agent/"+op,method:"POST",handler:httpAction(async(ctx,request)=>{
+for(const op of ["claim","renew","complete","reviews","lookalike"] as const)http.route({path:"/agent/"+op,method:"POST",handler:httpAction(async(ctx,request)=>{
  if(!await agentAuth(request))return agentJson({error:"Unauthorized"},401);
  let body:Record<string,unknown>;try{body=await request.json() as Record<string,unknown>;}catch{return agentJson({error:"Bad JSON"},400);}
  try{
   if(op==="claim")return agentJson(await ctx.runMutation(internal.agent.httpClaim,body as never));
+  if(op==="lookalike")return agentJson(await ctx.runMutation(internal.agent.httpLookalike,body as never));
   if(op==="reviews")return agentJson(await ctx.runMutation(internal.agent.httpReviews,body as never));
   if(op==="renew")return agentJson(await ctx.runMutation(internal.agent.httpRenew,body as never));
   return agentJson(await ctx.runMutation(internal.agent.httpComplete,body as never));

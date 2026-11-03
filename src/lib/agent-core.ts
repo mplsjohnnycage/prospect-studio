@@ -4,14 +4,14 @@ import {composeWhyNow, triggerAgeDays, type Trigger, type Gates, type OutcomeEve
 export const STAGES = ["sense", "qualify", "build", "reach", "learn"] as const;
 export type AgentStage = typeof STAGES[number];
 export type Level = 0 | 1 | 2 | 3; // L0 suggest, L1 draft, L2 auto-build demos, L3 auto-queue drafts for approval
-export type AgentConfig = { paused: boolean; levels: Record<AgentStage, Level>; caps: { demosPerDay: number; draftsPerDay: number; promotesPerDay: number; fetchesPerHost: number }; allowlist: string[]; evalsPassed: Partial<Record<AgentStage, number>> };
+export type AgentConfig = { paused: boolean; levels: Record<AgentStage, Level>; caps: { demosPerDay: number; draftsPerDay: number; promotesPerDay: number; fetchesPerHost: number }; allowlist: string[]; evalsPassed: Partial<Record<AgentStage, number>>; lookalikeWeight?: number; lookalikeWeightProposed?: number; embed?: { ok: boolean; at: number; model?: string; error?: string } };
 export const DEFAULT_CONFIG: AgentConfig = {
   paused: true, // kill switch ON until Johnny enables the loop
   levels: { sense: 1, qualify: 1, build: 1, reach: 1, learn: 1 },
   caps: { demosPerDay: 10, draftsPerDay: 40, promotesPerDay: 200, fetchesPerHost: 30 },
   allowlist: [], evalsPassed: {},
 };
-export const TASK_KINDS = ["sense", "qualify", "build", "reach", "learn", "digest", "recheck", "reviews"] as const;
+export const TASK_KINDS = ["sense", "qualify", "build", "reach", "learn", "digest", "recheck", "reviews", "embed"] as const;
 export type TaskKind = typeof TASK_KINDS[number];
 export const TASK_STATUSES = ["queued", "claimed", "done", "failed", "parked"] as const;
 /** Start of the current calendar day in America/Chicago (daily caps reset at local midnight). */
@@ -22,7 +22,7 @@ export function chicagoDayStart(now: number): number {
 }
 /** Same alert text inside the window is not logged again. */
 export const ALERT_DEDUPE_MS = 6 * 3600_000;
-export const KIND_STAGE: Record<TaskKind, AgentStage> = { sense: "sense", qualify: "qualify", build: "build", reach: "reach", learn: "learn", digest: "learn", recheck: "qualify", reviews: "qualify" };
+export const KIND_STAGE: Record<TaskKind, AgentStage> = { sense: "sense", qualify: "qualify", build: "build", reach: "reach", learn: "learn", digest: "learn", recheck: "qualify", reviews: "qualify", embed: "learn" };
 /** Actions the agent may never take at any level. Enforced by having no code path, and asserted here. */
 export const NEVER_AUTONOMOUS = ["send_email", "send_reply", "set_price", "accept_proposal", "spend"] as const;
 
@@ -161,4 +161,39 @@ export const DESKTOP_HEARTBEAT_MS = 75_000;
 export function fallbackAllowed(worker: string, lastDesktopSeen: number | undefined, now: number): boolean {
   if (!worker.startsWith("sprite:")) return true;
   return !lastDesktopSeen || now - lastDesktopSeen > DESKTOP_HEARTBEAT_MS;
+}
+
+// ---------- Item 22: embeddings (desktop EmbeddingGemma) -> lookalike-to-winners -> Fit ----------
+/** Kinds that need the desktop (browser or local model). Builtin and Sprite workers never claim them. */
+export const DESKTOP_ONLY: TaskKind[] = ["reviews", "embed"];
+export const DEFAULT_LOOKALIKE_WEIGHT = 0.3;
+export const MIN_WINNERS = 3;
+/** Public business facts only (no personal data). EmbeddingGemma document prompt format. */
+export function embedText(p: { name: string; trade: string; city: string; reasons?: string[]; triggerType?: string }): string {
+  const facts = (p.reasons ?? []).filter(r => /^(Gap|Care|Fit|Timing|Spend):/.test(r)).slice(0, 10).join("; ");
+  return `title: ${p.trade} in ${p.city} | text: ${p.trade}; ${p.city}; trigger ${p.triggerType ?? "none"}; ${facts}`.slice(0, 2000);
+}
+export function cosine(a: ArrayLike<number>, b: ArrayLike<number>): number {
+  let d = 0, x = 0, y = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; x += a[i] * a[i]; y += b[i] * b[i]; }
+  return x && y ? d / Math.sqrt(x * y) : 0;
+}
+/** Mean of the top-k cosine similarities to winner vectors, scaled 0..100. Undefined when too few winners. */
+export function lookalikeScore(v: ArrayLike<number>, winners: ArrayLike<number>[], k = 5): number | undefined {
+  if (winners.length < MIN_WINNERS) return undefined;
+  const sims = winners.map(w => cosine(v, w)).sort((a, b) => b - a).slice(0, k);
+  const mean = sims.reduce((s, x) => s + x, 0) / sims.length;
+  return Math.round(Math.max(0, Math.min(1, mean)) * 100);
+}
+/** Fit blended with the lookalike score; without a score the existing Fit stands (fallback). */
+export function blendFit(fit: number, look: number | undefined, weight = DEFAULT_LOOKALIKE_WEIGHT): number {
+  return look === undefined ? fit : Math.round((1 - weight) * fit + weight * look);
+}
+/** Weekly retune: propose a lookalike weight from how well it separated winners from the rest (bounded 0..0.4). */
+export function proposeLookalikeWeight(rows: { lookalike?: number; won: boolean }[]): { weight: number; gap?: number; labels: number } {
+  const s = rows.filter(r => r.lookalike !== undefined);
+  const w = s.filter(r => r.won), l = s.filter(r => !r.won);
+  if (w.length < MIN_WINNERS || l.length < 5) return { weight: DEFAULT_LOOKALIKE_WEIGHT, labels: s.length };
+  const mean = (xs: typeof s) => xs.reduce((a, r) => a + (r.lookalike ?? 0), 0) / xs.length;
+  const gap = Math.round(mean(w) - mean(l));
+  return { weight: Math.max(0, Math.min(0.4, Math.round((0.1 + gap / 50) * 100) / 100)), gap, labels: s.length };
 }

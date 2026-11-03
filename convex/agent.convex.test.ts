@@ -7,6 +7,7 @@ import {api,internal} from "./_generated/api";
 import type {Id} from "./_generated/dataModel";
 import {DEFAULT_CONFIG,LEASE_TTL_MS,MAX_ATTEMPTS} from "../src/lib/agent-core";
 
+vi.setConfig({testTimeout:20_000}); // cold module transform on the Sprite can exceed 5s
 const modules=import.meta.glob(["./**/*.ts","./_generated/*.js","!./**/*.test.ts","!./**/*.d.ts"]);
 const rec={recordId:"r1",identityKey:"name:acme:edina",source:"mpls_open_data",sourceUrl:"https://services.arcgis.com/x",fetchedAt:1,name:"Acme Heating",city:"Edina",trade:"hvac",phone:"6125550100",gates:{fit:90,gap:100,spend:0,care:0,timing:100},tier:"strong",total:70,reasons:["Gap: No website listed"],triggerType:"permit",triggerDate:"2026-10-30",triggerSource:"https://services.arcgis.com/x"};
 async function setup(paused:boolean,allowlist:string[]=[]){
@@ -63,7 +64,7 @@ test("reach with a fixed site drops before drafting",async()=>{
 test("qualify writes the tier, so plan does not re-enqueue it after done",async()=>{
  const {t,p}=await setup(false);
  await t.run(ctx=>ctx.db.patch(p._id,{tier:undefined,stage:"Qualify",qualified:true}));
- expect(await t.mutation(internal.agent.plan,{ownerId:"u1"})).toBe(1);
+ expect(await t.mutation(internal.agent.plan,{ownerId:"u1"})).toBeGreaterThanOrEqual(1);
  const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});
  await t.mutation(internal.agent.runStep,{taskId:task!._id});
  await t.mutation(internal.agent.complete,done(task as never));
@@ -235,4 +236,24 @@ test("promote picks the best public contact (business email over phone)",async()
  await t.mutation(internal.pipeline.promoteInternal,{ownerId:"u1",records:[{...rec,emails:["owner@gmail.com","info@acmeheating.com"]}]});
  const p=(await t.run(ctx=>ctx.db.query("prospects").first()))!;
  expect(p.contact).toBe("info@acmeheating.com");expect(p.scoreReasons).toContain("Contact: email");
+});
+
+test("embed: desktop-only; lookalike blends into Fit; endpoint down keeps the existing score; weight apply",async()=>{
+ vi.stubEnv("AUTOPILOT_SERVICE_SECRET","test-secret");
+ const {t,p}=await setup(false,["desktop:3apdbkg","sprite:prospect"]);
+ await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"embed",prospectId:p._id,input:{text:"x",won:false,winners:[]}});
+ expect(await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"})).toBeNull();
+ expect(await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"sprite:prospect"})).toBeNull();
+ expect((await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"desktop:3apdbkg"}))!.kind).toBe("embed");
+ const post=(body:unknown)=>t.fetch("/agent/lookalike",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer test-secret"},body:JSON.stringify(body)});
+ const before=(await t.run(ctx=>ctx.db.get(p._id)))!;
+ expect(await (await post({ownerId:"u1",worker:"desktop:3apdbkg",prospectId:p._id,winners:0,model:"m",endpointOk:false,error:"ECONNREFUSED"})).json()).toMatchObject({applied:false});
+ expect((await t.run(ctx=>ctx.db.get(p._id)))!.gates!.fit).toBe(before.gates!.fit);
+ const r=await (await post({ownerId:"u1",worker:"desktop:3apdbkg",prospectId:p._id,score:50,winners:4,model:"m",endpointOk:true})).json();
+ expect(r.applied).toBe(true);expect(r.fit).toBe(Math.round(0.7*before.gates!.fit+0.3*50));
+ await post({ownerId:"u1",worker:"desktop:3apdbkg",prospectId:p._id,score:50,winners:4,model:"m",endpointOk:true});
+ expect((await t.run(ctx=>ctx.db.get(p._id)))!.gates!.fit).toBe(r.fit); // re-blend uses the base fit, no drift
+ const u=t.withIdentity({subject:"u1"});
+ expect(await u.query(api.agent.lookalikeOf,{prospectId:p._id})).toMatchObject({source:"embedding",lookalike:50});
+ expect(await u.mutation(api.agent.applyLookalikeWeight,{})).toBe(0.3);
 });

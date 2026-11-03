@@ -24,6 +24,7 @@ export function AgentLoopPanel(){
  const setAllow=useMutation(api.agent.setAllowlist);
  const retryTask=useMutation(api.agent.retryTask);
  const cancelTask=useMutation(api.agent.cancelTask);
+ const applyWeight=useMutation(api.agent.applyLookalikeWeight);
  const runNow=useMutation(api.agent.runNow);
  const [allow,setAllowText]=useState("");
  if(!s)return <div className="text-xs text-muted-foreground">Loading agent loop...</div>;
@@ -40,6 +41,7 @@ export function AgentLoopPanel(){
    {(workers??[]).length?<ul className="text-[11px]">{workers!.map(w=><li key={w.worker}>{w.worker}: {ago(w.lastSeen)}{w.stale?" (offline)":""}</li>)}</ul>:<p className="text-[11px] text-muted-foreground">No worker has checked in yet. Start scripts/desktop/start-agent-worker.ps1 on DESKTOP-3APDBKG.</p>}</div>
   <div className="flex gap-2"><Input className="h-8 text-xs" placeholder={"Registered workers and outside agents, e.g. desktop:3apdbkg, sprite:prospect (comma separated). Current: "+(c.allowlist.join(", ")||"none")} value={allow} onChange={e=>setAllowText(e.target.value)}/>
    <Button size="sm" variant="outline" onClick={()=>act(()=>setAllow({workers:allow.split(",")}),"Allowlist saved")}>Save</Button></div>
+  <div className="text-[11px]"><b>Lookalike (EmbeddingGemma on the desktop)</b> · endpoint {c.embed?(c.embed.ok?"up":"down"+(c.embed.error?" ("+c.embed.error+")":""))+" at "+new Date(c.embed.at).toLocaleTimeString():"not seen yet"} · weight {c.lookalikeWeight??0.3}{c.lookalikeWeightProposed!==undefined&&c.lookalikeWeightProposed!==(c.lookalikeWeight??0.3)&&<> · proposed {c.lookalikeWeightProposed} <button type="button" className="underline" onClick={()=>applyWeight({}).then(w=>toast.success("Lookalike weight "+w),e=>toast.error(String(e)))}>Apply</button></>}</div>
   <div><p className="text-[11px] font-medium">Task queue</p><ul className="max-h-40 overflow-auto text-[11px]">{(tasks??[]).map(t=><li key={t._id} className="flex items-center gap-2"><span className="flex-1">{t.kind} · {t.status}{t.claimedBy?" · "+t.claimedBy:""}{t.status==="claimed"&&t.leaseUntil?" · lease to "+new Date(t.leaseUntil).toLocaleTimeString():""} · tries {t.attempts}{t.error?" · "+t.error:""}</span>{(t.status==="parked"||t.status==="failed")&&<button type="button" className="underline" onClick={()=>retryTask({taskId:t._id}).then(()=>toast.success("Re-queued"),e=>toast.error(String(e)))}>Retry</button>}{(t.status==="queued"||t.status==="parked"||t.status==="claimed")&&<button type="button" className="underline" onClick={()=>cancelTask({taskId:t._id}).then(()=>toast.success("Cancelled"),e=>toast.error(String(e)))}>Cancel</button>}</li>)}</ul></div>
   <div><p className="text-[11px] font-medium">Digests (drafts, never emailed)</p>{(digests??[]).slice(0,3).map(d=><pre key={d._id} className="whitespace-pre-wrap text-[11px] text-muted-foreground">{d.subject}{"\n"}{d.body}</pre>)}</div>
  </div>;
@@ -51,10 +53,12 @@ export function AgentTrace({prospectId}:{prospectId:string}){
  const request=useMutation(api.agent.request);
  const ask=async(kind:"qualify"|"build"|"reach"|"recheck"|"reviews")=>{try{await request({kind,prospectId:prospectId as Id<"prospects">});toast.success(kind+" queued");}catch(e){toast.error(e instanceof Error?e.message:"Failed");}};
  const testLeadM=useMutation(api.agent.sendTestLead);
+ const look=useQuery(api.agent.lookalikeOf,{prospectId:prospectId as Id<"prospects">});
  const latest=(k:string)=>(rows??[]).filter(r=>r.what.startsWith(k+":")).pop()?.what.replace(new RegExp("^"+k+":\\s*"),"");
  const card=latest("call_now")??latest("call_card"),td=latest("teardown"),ptl=latest("pay_to_live"),dna=latest("brand_dna");
  return <div className="space-y-2 border-b p-3">
   <div className="flex flex-wrap gap-1">{(["recheck","reviews","build","reach"] as const).map(k=><Button key={k} size="sm" variant="outline" className="h-7 text-[11px]" onClick={()=>ask(k)}>Agent: {k=="reach"?"draft":k}</Button>)}<Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={()=>testLeadM({prospectId:prospectId as Id<"prospects">}).then(()=>toast.success("Test lead logged (labeled TEST, nothing sent)"),e=>toast.error(String(e)))}>Demo test lead</Button></div>
+  {look&&<p className="text-[11px]"><b>Fit {look.fit??"n/a"}</b> · lookalike {look.lookalike??"n/a"} <span className="text-muted-foreground">({look.source==="embedding"?"EmbeddingGemma":look.source==="gates"?"gate-based fallback":"none yet"}) · {look.detail}</span></p>}
   {[card,dna,td,ptl].filter(Boolean).map((x,i)=><pre key={i} className="whitespace-pre-wrap rounded bg-muted p-2 text-[11px]">{x}</pre>)}
   <ul className="max-h-32 overflow-auto text-[11px] text-muted-foreground">{(rows??[]).slice(-12).map((r,i)=><li key={i}>{new Date(r.at).toLocaleString()} · {r.type} · {r.what.slice(0,120)}</li>)}</ul>
  </div>;
