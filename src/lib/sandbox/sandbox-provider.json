@@ -1,11 +1,22 @@
 {
-  "_doc": "Docker Sandboxes ('Docker sandbox cloud') provider for Prospect Studio. Staged 2026-11-03; NOT applied. sbx 0.50.1 (winget Docker.sbx, MSI sha256 7ac140b4...) NOT installed: desktop is Windows 10 Pro 19045, local sandboxes need Windows 11 + Hypervisor Platform (Disabled); install attempt hit OutOfMemory and Docker restarted. Use fallback docker-run-tier2 until resolved.",
-  "provider": "docker-sandboxes",
-  "cli": "sbx",
-  "host": "DESKTOP-3APDBKG",
-  "fallbackProvider": { "name": "docker-run-tier2", "image": "prospect-sandbox:local", "args": ["--network", "none", "--memory", "1g", "--cpus", "1", "--pids-limit", "256", "--read-only"] },
-  "agents": ["claude-code", "codex", "opencode", "pi", "grok", "cursor-sdk", "cli"],
-  "network": { "default": "deny", "allow": ["api.openai.com", "chatgpt.com", "auth.openai.com", "api.anthropic.com", "opencode.ai", "registry.npmjs.org"], "allowHostLoopback": false },
-  "resources": { "maxConcurrent": 1, "memory": "1g", "cpus": 1, "diskGb": 5, "wallClockMinutes": 20, "note": "Desktop ~1.7 GB free RAM, WSL cap 6 GB: one sandbox at a time." },
-  "rules": { "tierRouting": "Tier 2 only; routing only moves up and is logged", "killSwitch": "honor Convex kill switch before every launch (currently paused)", "caps": { "demosPerDay": 10, "draftsPerDay": 40 }, "neverAutonomous": ["send", "price"], "secrets": "env var names only; injected by sbx secret store, never in prompts or logs" }
+  "_doc": "rev 3, 2026-11-03 11:50 CT. Agent builds: Rivet sandbox-agent SDK -> custom provider 'docker-cloud' -> Docker hosted cloud sandboxes. NOT applied, NOT run (needs Johnny's Docker Agentic Platform subscription).",
+  "buildPath": {
+    "sdk": "sandbox-agent@0.5.5",
+    "provider": "docker-cloud",
+    "providerModule": "src/lib/sandbox/docker-cloud-provider.ts",
+    "backend": "Docker Agentic Platform cloud sandboxes via @docker/sandboxes@0.53.0 (experimental)",
+    "whyNotBuiltInDockerProvider": "sandbox-agent/docker uses dockerode with socketPath /var/run/docker.sock (local Engine). Docker cloud sandboxes are not a Docker Engine endpoint, so DOCKER_HOST/context cannot target them (UNVERIFIED by run; DOCUMENTED by source + Docker docs).",
+    "agents": ["claude-code", "codex", "opencode", "pi", "grok", "cursor-sdk", "cli"],
+    "auth": { "dockerAccount": "browser OAuth (oauth() helper) or PAT", "envNames": ["DOCKER_ID", "DOCKER_PAT"], "agentCreds": "Docker cloud secret store; Codex: `sbx --cloud secret set openai --oauth` (account scope); no values in prompts/logs" },
+    "size": "micro (1 vCPU, 2 GiB, $0.07/h)",
+    "expiryMinutes": 20,
+    "network": { "default": "deny", "allow": ["api.openai.com:443", "chatgpt.com:443", "auth.openai.com:443", "api.anthropic.com:443", "opencode.ai:443", "registry.npmjs.org:443", "github.com:443"] },
+    "maxConcurrent": 1
+  },
+  "tier2LocalOnly": {
+    "_doc": "Desktop local network-less Docker. ONLY for Tier 2 untrusted NON-agent code execution. Never an agent build path.",
+    "image": "prospect-sandbox:local",
+    "args": ["--network", "none", "--memory", "1g", "--cpus", "1", "--pids-limit", "256", "--read-only"]
+  },
+  "rules": { "tierRouting": "Tier 0/1/2 unchanged; routing only moves up and is logged", "killSwitch": "check Convex kill switch before every create()", "caps": { "demosPerDay": 10, "draftsPerDay": 40 }, "neverAutonomous": ["send", "price"], "spend": "cloud create() refused unless DOCKER_CLOUD_ENABLED=1 (Johnny's go)" }
 }
