@@ -13,6 +13,7 @@ import {buildBusinessProfile} from "../src/lib/business-profile";
 import {buildDemoFacts,buildDemoPrompt,buildFixPrompt,buildReviewPrompt,DEMO_REVIEW_SYSTEM,DEMO_SYSTEM_PROMPT,extractHtml,finalizeDemoHtml,parseReview,validateDemoHtml} from "../src/lib/demo-generation";
 import {GeminiHttpError,withModelFallback} from "../src/lib/gemini";
 import {demoModelList,generateAny} from "../src/lib/llm";
+import {logOutcome} from "./outcomes";
 import {pickPreset,presetBrief} from "../src/lib/design-presets";
 
 const limiter=new RateLimiter(components.rateLimiter,{demoGeneration:{kind:"fixed window",rate:30,period:HOUR}});
@@ -276,6 +277,7 @@ export const recordView=internalMutation({
   const now=Date.now(),prev=c.lastViewedAt;
   const views=(c.views??0)+1;
   await ctx.db.patch(c._id,{views,lastViewedAt:now});
+  if(views===1)await logOutcome(ctx,{ownerId:c.ownerId,prospectId:c.prospectId,kind:"viewed",at:now});
   const firstTime=views===1,cameBack=!!prev&&now-prev>24*3600_000;
   if(firstTime||cameBack){
    await ctx.db.insert("activities",{ownerId:c.ownerId,prospectId:c.prospectId,kind:"demo_viewed",summary:firstTime?"Demo opened for the first time":"Came back to the demo ("+views+" views)",timestamp:now});
