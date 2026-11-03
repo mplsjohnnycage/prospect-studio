@@ -57,6 +57,14 @@ test("spend pauses the loop; failures retry with backoff",async()=>{
  const tt=await t.run(ctx=>ctx.db.get(task!._id));
  expect(tt!.status).toBe("queued");expect(tt!.notBefore).toBeGreaterThan(Date.now());
 });
+test("desktop heartbeat blocks sprite fallback; stale desktop lets sprite claim",async()=>{
+ const {t,p}=await setup(false);
+ await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"recheck",prospectId:p._id});
+ await t.run(ctx=>ctx.db.insert("agentWorkers",{ownerId:"u1",worker:"desktop:3apdbkg",lastSeen:Date.now()}));
+ expect(await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"sprite:prospect"})).toBeNull();
+ await t.run(async ctx=>{const w=(await ctx.db.query("agentWorkers").first())!;await ctx.db.patch(w._id,{lastSeen:Date.now()-10*60_000});});
+ expect((await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"sprite:prospect"}))!.kind).toBe("recheck");
+});
 test("digest and weekly learn write drafts only",async()=>{
  const {t}=await setup(false);
  await t.mutation(internal.agent.dailyDigest,{});

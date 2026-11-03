@@ -7,7 +7,9 @@ import {demoQa,composeWhyNow,type Trigger} from "../src/lib/revenue-engine";
 
 type Rec={identityKey:string;sourceUrl:string;name:string;city:string;trade?:string;triggerType:string;triggerDate?:string;triggerSource?:string;reasons:string[]};
 const path=process.argv[2]??".data/promote.json";
-const recs=(JSON.parse(readFileSync(path,"utf8")) as Rec[]);
+type Old={record:{identityKey:string;sourceUrl:string;name:string;city:string;trade?:string;trigger?:Trigger};gates:{trigger:Trigger;reasons:string[]}};
+const raw=JSON.parse(readFileSync(path,"utf8")) as (Rec|Old)[];
+const recs:Rec[]=raw.map(x=>"record" in x?{identityKey:x.record.identityKey,sourceUrl:x.record.sourceUrl,name:x.record.name,city:x.record.city,trade:x.record.trade,triggerType:x.gates.trigger.type,triggerDate:x.gates.trigger.date,triggerSource:x.gates.trigger.source,reasons:x.gates.reasons}:x);
 const trig=(r:Rec):Trigger=>({type:r.triggerType as Trigger["type"],date:r.triggerDate,source:r.triggerSource});
 const q=evalQualify(recs.slice(0,100).map(r=>({identityKey:r.identityKey,sourceUrl:r.sourceUrl,trigger:trig(r),gatesPassed:true})));
 const b=evalBuild(recs.slice(0,25).map(r=>{const facts=[{text:`${r.trade??"Local"} work permitted in ${r.city}`,sourceUrl:r.sourceUrl}];const ir=buildIR({name:r.name,city:r.city,trade:r.trade??"",facts});const html=renderIR(ir,facts,"#book");return {qaPass:demoQa(html,facts).pass&&!irIssues(ir,facts,true).length,unsourced:irIssues(ir,facts,true).filter(i=>i.startsWith("Unsourced")).length};}));

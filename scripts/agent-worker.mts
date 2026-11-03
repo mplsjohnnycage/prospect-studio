@@ -1,5 +1,7 @@
 // Agentic step 8: desktop/Sprite worker. Stateless: claim one task -> run -> write result -> exit (or loop with --loop).
-// Env: CONVEX_URL, AUTOPILOT_SERVICE_SECRET, OWNER_ID, WORKER (e.g. desktop:jn or sprite:prospect). Never sends anything.
+// Tier 1 = desktop (WORKER=desktop:3apdbkg). Fallback = Sprite (WORKER=sprite:prospect), which the server lets claim only when
+// the desktop heartbeat is older than 5 minutes; a desktop task whose lease expires returns to the queue.
+// Env: CONVEX_URL, AUTOPILOT_SERVICE_SECRET, OWNER_ID, WORKER. Never sends anything.
 // Tasks it handles: recheck (live site fetch from a residential IP) and sense (free discovery -> promote).
 import {ConvexHttpClient} from "convex/browser";
 import {api} from "../convex/_generated/api";

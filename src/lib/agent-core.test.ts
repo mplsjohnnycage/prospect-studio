@@ -31,6 +31,12 @@ test("claims, leases, retries, idempotent keys", () => {
   assert.equal(A.onFailure({ ...t, attempts: 5 }, 0).status, "parked");
   assert.equal(A.tierFor("build", { heavy: true }), "sprite");
 });
+test("desktop is primary; sprite only when desktop heartbeat is stale", () => {
+  assert.equal(A.fallbackAllowed("sprite:p", 1000, 2000), false);
+  assert.equal(A.fallbackAllowed("sprite:p", 0, 10 * 60_000), true);
+  assert.equal(A.fallbackAllowed("sprite:p", undefined, 1), true);
+  assert.equal(A.fallbackAllowed("desktop:3apdbkg", undefined, 1), true);
+});
 test("alerts, evals, features, digest", () => {
   assert.equal(A.alertsFor([{ status: "error", usd: 0, kind: "build" }, { status: "error", usd: 0, kind: "build" }, { status: "error", usd: 0, kind: "build", error: "x" }]).length, 1);
   assert.ok(A.alertsFor([{ status: "ok", usd: 0.01, kind: "sense" }])[0].includes("spend"));

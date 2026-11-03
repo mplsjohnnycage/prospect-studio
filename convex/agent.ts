@@ -7,7 +7,7 @@ import {internal} from "./_generated/api";
 import {v} from "convex/values";
 import type {Doc,Id} from "./_generated/dataModel";
 import {owner} from "./identity";
-import {DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
+import {fallbackAllowed,DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
 import {buildIR,irIssues,renderIR} from "../src/lib/revenue-build";
 import {demoQa,siteHealth,recheck,calibrateWeights,type TriggerType} from "../src/lib/revenue-engine";
 import {whyNowDraft} from "./autopilot";
@@ -60,8 +60,14 @@ export const claimNext=internalMutation({args:{ownerId:v.string(),worker:v.strin
 async function claimFor(ctx:MutationCtx,a:ClaimArgs){ {
   const cfg=await loadConfig(ctx,a.ownerId);
   if(!mayClaim(cfg,a.worker))throw Error("Worker not on the allowlist");
+  const now=Date.now();
+  // Heartbeat: every claim attempt marks the worker alive. Desktop is Tier 1; Sprite claims only when the desktop is stale.
+  const hb=await ctx.db.query("agentWorkers").withIndex("by_owner_worker",q=>q.eq("ownerId",a.ownerId).eq("worker",a.worker)).first();
+  if(hb)await ctx.db.patch(hb._id,{lastSeen:now});else await ctx.db.insert("agentWorkers",{ownerId:a.ownerId,worker:a.worker,lastSeen:now});
+  const desk=(await ctx.db.query("agentWorkers").withIndex("by_owner_worker",q=>q.eq("ownerId",a.ownerId)).take(20)).filter(w=>w.worker.startsWith("desktop:")).reduce((m,w)=>Math.max(m,w.lastSeen),0);
+  if(!fallbackAllowed(a.worker,desk||undefined,now))return null;
   if(cfg.paused)return null;
-  const now=Date.now();const used=await usedToday(ctx,a.ownerId);
+  const used=await usedToday(ctx,a.ownerId);
   const cands=[...await ctx.db.query("agentTasks").withIndex("by_owner_status",q=>q.eq("ownerId",a.ownerId).eq("status","queued")).take(100),...await ctx.db.query("agentTasks").withIndex("by_owner_status",q=>q.eq("ownerId",a.ownerId).eq("status","claimed")).take(50)]
    .filter(t=>(t.status==="queued"&&(t.notBefore??0)<=now)||(t.status==="claimed"&&(t.leaseUntil??0)<now)).filter(t=>!a.kinds||a.kinds.includes(t.kind));
   for(const t of cands){

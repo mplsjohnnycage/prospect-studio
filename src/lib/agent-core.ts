@@ -130,3 +130,11 @@ export function digest(d: { promoted: number; built: number; drafted: number; fa
   return { subject: "Prospect loop: daily digest", body: [`${d.paused ? "Loop paused (kill switch on)." : "Loop running."} Promoted ${d.promoted}, demos ${d.built}, drafts waiting ${d.drafted}.`, d.failures ? `${d.failures} task failures.` : "No failures.", d.alerts.length ? "Alerts: " + d.alerts.join("; ") : "No alerts."].join("\n") };
 }
 export { composeWhyNow, type Gates };
+
+// ---------- Desktop-primary tiering (Johnny: runtime lives on DESKTOP-3APDBKG) ----------
+export const DESKTOP_HEARTBEAT_MS = 5 * 60_000;
+/** Desktop is Tier 1. A Sprite/sandbox worker may claim only when no desktop heartbeat is fresh. */
+export function fallbackAllowed(worker: string, lastDesktopSeen: number | undefined, now: number): boolean {
+  if (!worker.startsWith("sprite:")) return true;
+  return !lastDesktopSeen || now - lastDesktopSeen > DESKTOP_HEARTBEAT_MS;
+}
