@@ -11,7 +11,17 @@ export const DEFAULT_CONFIG: AgentConfig = {
   caps: { demosPerDay: 10, draftsPerDay: 40, promotesPerDay: 200, fetchesPerHost: 30 },
   allowlist: [], evalsPassed: {},
 };
-export type TaskKind = "sense" | "qualify" | "build" | "reach" | "learn" | "digest" | "recheck";
+export const TASK_KINDS = ["sense", "qualify", "build", "reach", "learn", "digest", "recheck"] as const;
+export type TaskKind = typeof TASK_KINDS[number];
+export const TASK_STATUSES = ["queued", "claimed", "done", "failed", "parked"] as const;
+/** Start of the current calendar day in America/Chicago (daily caps reset at local midnight). */
+export function chicagoDayStart(now: number): number {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(new Date(now)).map(p => [p.type, p.value]));
+  const sinceMidnight = ((+parts.hour * 60 + +parts.minute) * 60 + +parts.second) * 1000 + (now % 1000);
+  return now - sinceMidnight;
+}
+/** Same alert text inside the window is not logged again. */
+export const ALERT_DEDUPE_MS = 6 * 3600_000;
 export const KIND_STAGE: Record<TaskKind, AgentStage> = { sense: "sense", qualify: "qualify", build: "build", reach: "reach", learn: "learn", digest: "learn", recheck: "qualify" };
 /** Actions the agent may never take at any level. Enforced by having no code path, and asserted here. */
 export const NEVER_AUTONOMOUS = ["send_email", "send_reply", "set_price", "accept_proposal", "spend"] as const;

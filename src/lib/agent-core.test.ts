@@ -63,3 +63,8 @@ test("teardown from automated checks: dead site scores 0, a clean site scores hi
   assert.equal(r.score.you, 0); assert.ok(r.score.rival >= 4);
   assert.match(r.lines.join("\n"), /Online quote\/booking: Acme no · Rival no/);
 });
+
+test("calendar-day cap window starts at Chicago midnight", () => {
+  const now = Date.parse("2026-11-03T15:44:00Z"); // 9:44 AM CST
+  assert.equal(new Date(A.chicagoDayStart(now)).toISOString(), "2026-11-03T06:00:00.000Z");
+});

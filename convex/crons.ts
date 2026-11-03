@@ -10,4 +10,5 @@ crons.daily("draft follow-ups",{hourUTC:13,minuteUTC:7},internal.followups.planD
 crons.interval("agent tick",{minutes:15},internal.agent.tick,{});
 crons.daily("agent daily digest",{hourUTC:12,minuteUTC:30},internal.agent.dailyDigest,{});
 crons.weekly("agent weekly learn",{dayOfWeek:"monday",hourUTC:13,minuteUTC:0},internal.agent.weeklyLearn,{});
+crons.daily("agent cleanup",{hourUTC:9,minuteUTC:15},internal.agent.cleanup,{});
 export default crons;

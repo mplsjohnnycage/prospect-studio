@@ -2,7 +2,7 @@
 // Controls for the autonomous loop. Every control calls a real Convex function in convex/agent.ts.
 // Sends and prices are never controlled here: they stay manual approvals in the Sales panel.
 import {useState} from "react";
-import {useAction,useMutation,useQuery} from "convex/react";
+import {useMutation,useQuery} from "convex/react";
 import {toast} from "sonner";
 import {api} from "../../convex/_generated/api";
 import type {Id} from "../../convex/_generated/dataModel";
@@ -24,7 +24,7 @@ export function AgentLoopPanel(){
  const setAllow=useMutation(api.agent.setAllowlist);
  const retryTask=useMutation(api.agent.retryTask);
  const cancelTask=useMutation(api.agent.cancelTask);
- const runNow=useAction(api.agent.runNow);
+ const runNow=useMutation(api.agent.runNow);
  const [allow,setAllowText]=useState("");
  if(!s)return <div className="text-xs text-muted-foreground">Loading agent loop...</div>;
  const c=s.config;
@@ -32,7 +32,7 @@ export function AgentLoopPanel(){
  return <div className="mb-6 space-y-4 rounded-lg border p-4">
   <div className="flex items-center justify-between"><div><p className="ps-eyebrow">Autonomous loop</p><p className="text-sm font-semibold">{c.paused?"Paused (kill switch on)":"Running"}</p><p className="text-[11px] text-muted-foreground">Sends and prices always need your approval.</p></div>
    <div className="flex gap-2"><Button size="sm" variant={c.paused?"default":"destructive"} onClick={()=>act(()=>setPaused({paused:!c.paused}),c.paused?"Loop enabled":"Loop paused")}>{c.paused?"Enable loop":"Kill switch"}</Button>
-   <Button size="sm" variant="outline" disabled={c.paused} onClick={()=>act(()=>runNow({}),"Ran queued steps")}>Run now</Button></div></div>
+   <Button size="sm" variant="outline" disabled={c.paused} onClick={()=>act(()=>runNow({}),"Started: the queue runs in the background")}>Run now</Button></div></div>
   <div className="grid grid-cols-2 gap-2 md:grid-cols-5">{STAGES.map((st:AgentStage)=><label key={st} className="text-[11px]"><span className="block text-muted-foreground">{st}</span>
    <select className="w-full rounded border bg-background p-1 text-xs" value={c.levels[st]} onChange={e=>act(()=>setLevel({stage:st,level:Number(e.target.value) as Level}),st+" level saved")}>{LEVELS.map(([l,n])=><option key={l} value={l}>{n}</option>)}</select></label>)}</div>
   <p className="text-[11px] text-muted-foreground">Today: demos {s.used.demos}/{c.caps.demosPerDay} · drafts {s.used.drafts}/{c.caps.draftsPerDay} · promotes {s.used.promotes}/{c.caps.promotesPerDay} · queued {s.queued} · parked {s.parked} · evals passed: {Object.keys(c.evalsPassed).filter(k=>c.evalsPassed[k as AgentStage]).join(", ")||"none"}</p>

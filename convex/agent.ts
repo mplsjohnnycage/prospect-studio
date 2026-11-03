@@ -7,7 +7,7 @@ import {internal} from "./_generated/api";
 import {v} from "convex/values";
 import type {Doc,Id} from "./_generated/dataModel";
 import {owner} from "./identity";
-import {DESKTOP_HEARTBEAT_MS,fallbackAllowed,DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,teardown,siteFactsFrom,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
+import {ALERT_DEDUPE_MS,chicagoDayStart,DESKTOP_HEARTBEAT_MS,fallbackAllowed,DEFAULT_CONFIG,mayRun,mayClaim,setLevel,taskKey,onFailure,leaseFor,alertsFor,digest,callScript,weeklyReport,teardown,siteFactsFrom,KIND_STAGE,type AgentConfig,type TaskKind,type Level,type AgentStage} from "../src/lib/agent-core";
 import {tryDemoIR,recordTestLead} from "./demoIr";
 import {siteHealth,recheck,calibrateWeights,type TriggerType} from "../src/lib/revenue-engine";
 import {whyNowDraft} from "./autopilot";
@@ -15,22 +15,28 @@ import {logStageCost} from "./outcomes";
 import {loadSuppressions} from "./suppressions";
 import {isSuppressed} from "../src/lib/suppression";
 
-export const taskKind=v.union(...(["sense","qualify","build","reach","learn","digest","recheck"] as const).map(v.literal));
+import {taskKind,taskRow,workerRow,claimedTask,agentStage,type ClaimedTask} from "./validators";
+export {taskKind};
 const DAY=86_400_000;
 
 export async function loadConfig(ctx:QueryCtx|MutationCtx,ownerId:string):Promise<AgentConfig>{
  const row=await ctx.db.query("agentConfig").withIndex("by_owner",q=>q.eq("ownerId",ownerId)).first();
  return row?{...DEFAULT_CONFIG,...(row.config as AgentConfig)}:DEFAULT_CONFIG;
 }
-async function saveConfig(ctx:MutationCtx,ownerId:string,cfg:AgentConfig){
+/** Merge only the fields being changed onto the freshly read row, in the same transaction (Convex OCC retries on conflict),
+ *  so a concurrent pause and level change can never overwrite each other's fields. */
+async function patchConfig(ctx:MutationCtx,ownerId:string,change:(cfg:AgentConfig)=>Partial<AgentConfig>){
  const row=await ctx.db.query("agentConfig").withIndex("by_owner",q=>q.eq("ownerId",ownerId)).first();
- if(row)await ctx.db.patch(row._id,{config:cfg,updatedAt:Date.now()});else await ctx.db.insert("agentConfig",{ownerId,config:cfg,updatedAt:Date.now()});
+ const cur={...DEFAULT_CONFIG,...(row?.config as AgentConfig|undefined)};
+ const next={...cur,...change(cur)};
+ if(row)await ctx.db.patch(row._id,{config:next,updatedAt:Date.now()});else await ctx.db.insert("agentConfig",{ownerId,config:next,updatedAt:Date.now()});
+ return next;
 }
+/** Caps count runs since local midnight in America/Chicago, read per kind through an index. */
 async function usedToday(ctx:QueryCtx|MutationCtx,ownerId:string){
- const since=Date.now()-DAY;
- const runs=await ctx.db.query("agentRuns").withIndex("by_owner_time",q=>q.eq("ownerId",ownerId).gte("startedAt",since)).take(2000);
- const ok=(k:string)=>runs.filter(r=>r.kind===k&&r.status==="ok").length;
- return {demos:ok("build"),drafts:ok("reach"),promotes:ok("sense")};
+ const since=chicagoDayStart(Date.now());
+ const ok=async(k:string)=>(await ctx.db.query("agentRuns").withIndex("by_owner_kind_time",q=>q.eq("ownerId",ownerId).eq("kind",k).gte("startedAt",since)).take(500)).filter(r=>r.status==="ok").length;
+ return {demos:await ok("build"),drafts:await ok("reach"),promotes:await ok("sense")};
 }
 
 // ---------- Config (Johnny's controls) ----------
@@ -40,11 +46,11 @@ export const status=query({args:{},returns:v.any(),handler:async ctx=>{
  const parked=await ctx.db.query("agentTasks").withIndex("by_owner_status",q=>q.eq("ownerId",user).eq("status","parked")).take(100);
  return {config:cfg,used:await usedToday(ctx,user),queued:queued.length,parked:parked.length};
 }});
-export const setPaused=mutation({args:{paused:v.boolean()},returns:v.boolean(),handler:async(ctx,a)=>{const user=await owner(ctx);await saveConfig(ctx,user,{...await loadConfig(ctx,user),paused:a.paused});return a.paused;}});
-export const setStageLevel=mutation({args:{stage:v.union(...(["sense","qualify","build","reach","learn"] as const).map(v.literal)),level:v.union(v.literal(0),v.literal(1),v.literal(2),v.literal(3))},returns:v.any(),
- handler:async(ctx,a)=>{const user=await owner(ctx);const cfg=setLevel(await loadConfig(ctx,user),a.stage as AgentStage,a.level as Level);await saveConfig(ctx,user,cfg);return cfg.levels;}});
-export const setAllowlist=mutation({args:{workers:v.array(v.string())},returns:v.array(v.string()),handler:async(ctx,a)=>{const user=await owner(ctx);const w=a.workers.map(x=>x.trim()).filter(Boolean).slice(0,20);await saveConfig(ctx,user,{...await loadConfig(ctx,user),allowlist:w});return w;}});
-export const recordEval=internalMutation({args:{ownerId:v.string(),stage:v.string(),passed:v.boolean()},returns:v.null(),handler:async(ctx,a)=>{const cfg=await loadConfig(ctx,a.ownerId);await saveConfig(ctx,a.ownerId,{...cfg,evalsPassed:{...cfg.evalsPassed,[a.stage]:a.passed?Date.now():0}});return null;}});
+export const setPaused=mutation({args:{paused:v.boolean()},returns:v.boolean(),handler:async(ctx,a)=>{const user=await owner(ctx);await patchConfig(ctx,user,()=>({paused:a.paused}));return a.paused;}});
+export const setStageLevel=mutation({args:{stage:agentStage,level:v.union(v.literal(0),v.literal(1),v.literal(2),v.literal(3))},returns:v.any(),
+ handler:async(ctx,a)=>{const user=await owner(ctx);const cfg=await patchConfig(ctx,user,c=>({levels:setLevel(c,a.stage as AgentStage,a.level as Level).levels}));return cfg.levels;}});
+export const setAllowlist=mutation({args:{workers:v.array(v.string())},returns:v.array(v.string()),handler:async(ctx,a)=>{const user=await owner(ctx);const w=a.workers.map(x=>x.trim()).filter(Boolean).slice(0,20);await patchConfig(ctx,user,()=>({allowlist:w}));return w;}});
+export const recordEval=internalMutation({args:{ownerId:v.string(),stage:v.string(),passed:v.boolean()},returns:v.null(),handler:async(ctx,a)=>{await patchConfig(ctx,a.ownerId,c=>({evalsPassed:{...c.evalsPassed,[a.stage]:a.passed?Date.now():0}}));return null;}});
 
 // ---------- Queue ----------
 /** Keys are owner-scoped. A finished (done) task counts as a duplicate unless rerun is set (Johnny's explicit request). */
@@ -58,13 +64,13 @@ export async function enqueue(ctx:MutationCtx,ownerId:string,kind:TaskKind,prosp
 }
 export const enqueueInternal=internalMutation({args:{ownerId:v.string(),kind:taskKind,prospectId:v.optional(v.id("prospects")),input:v.optional(v.any())},returns:v.id("agentTasks"),handler:async(ctx,a)=>enqueue(ctx,a.ownerId,a.kind,a.prospectId,a.input)});
 type ClaimArgs={ownerId:string;worker:string;kinds?:TaskKind[]};
-export const claimNext=internalMutation({args:{ownerId:v.string(),worker:v.string(),kinds:v.optional(v.array(taskKind))},returns:v.any(),handler:async(ctx,a)=>claimFor(ctx,a)});
+export const claimNext=internalMutation({args:{ownerId:v.string(),worker:v.string(),kinds:v.optional(v.array(taskKind))},returns:claimedTask,handler:async(ctx,a)=>claimFor(ctx,a)});
 async function beat(ctx:MutationCtx,ownerId:string,worker:string,now:number){
  const hb=await ctx.db.query("agentWorkers").withIndex("by_owner_worker",q=>q.eq("ownerId",ownerId).eq("worker",worker)).first();
  if(!hb)await ctx.db.insert("agentWorkers",{ownerId,worker,lastSeen:now});
  else if(now-hb.lastSeen>15_000)await ctx.db.patch(hb._id,{lastSeen:now}); // fewer writes, fewer OCC conflicts
 }
-async function claimFor(ctx:MutationCtx,a:ClaimArgs){ {
+async function claimFor(ctx:MutationCtx,a:ClaimArgs):Promise<ClaimedTask>{ {
   const cfg=await loadConfig(ctx,a.ownerId);
   if(!mayClaim(cfg,a.worker))throw Error("Worker not on the allowlist");
   const now=Date.now();
@@ -87,7 +93,7 @@ async function claimFor(ctx:MutationCtx,a:ClaimArgs){ {
    const leaseId=crypto.randomUUID();
    const patch={status:"claimed" as const,claimedBy:a.worker,leaseId,leaseUntil:now+leaseFor(a.worker),attempts:t.attempts+1,updatedAt:now};
    await ctx.db.patch(t._id,patch);
-   return {...t,...patch};
+   return {_id:t._id,kind:t.kind,leaseId,leaseUntil:patch.leaseUntil,attempts:patch.attempts,...(t.prospectId?{prospectId:t.prospectId}:{}),...(t.input!==undefined?{input:t.input}:{})};
   }
   return null;
  }}
@@ -103,9 +109,11 @@ async function completeFor(ctx:MutationCtx,a:CompleteArgs){ {
   const usd=a.usd??0;
   await ctx.db.insert("agentRuns",{ownerId:t.ownerId,taskId:t._id,kind:t.kind,tier:a.tier??"convex",worker:a.worker,startedAt:a.startedAt,endedAt:now,status:a.skipped?"skipped":a.ok?"ok":"error",usd,...(a.error?{error:a.error.slice(0,300)}:{}),...(t.prospectId?{prospectId:t.prospectId}:{})});
   await logStageCost(ctx,{ownerId:t.ownerId,stage:KIND_STAGE[t.kind],usd,computeSeconds:Math.round((now-a.startedAt)/1000),tool:"agent:"+t.kind,...(t.prospectId?{prospectId:t.prospectId}:{})});
-  if(usd>0){const cfg=await loadConfig(ctx,t.ownerId);await saveConfig(ctx,t.ownerId,{...cfg,paused:true});await ctx.db.insert("activities",{ownerId:t.ownerId,kind:"alert",summary:"Agent loop paused: a task recorded spend ($"+usd+")",timestamp:now});}
+  if(usd>0){await patchConfig(ctx,t.ownerId,()=>({paused:true}));await ctx.db.insert("activities",{ownerId:t.ownerId,kind:"alert",summary:"Agent loop paused: a task recorded spend ($"+usd+")",timestamp:now});}
   const recent=await ctx.db.query("agentRuns").withIndex("by_owner_time",q=>q.eq("ownerId",t.ownerId)).order("desc").take(3);
-  for(const al of alertsFor(recent.reverse().map(r=>({status:r.status,usd:r.usd,kind:r.kind,error:r.error}))))await ctx.db.insert("activities",{ownerId:t.ownerId,kind:"alert",summary:al,timestamp:now});
+  const als=alertsFor(recent.reverse().map(r=>({status:r.status,usd:r.usd,kind:r.kind,error:r.error})));
+  if(als.length){const seen=new Set((await ctx.db.query("activities").withIndex("by_owner_time",q=>q.eq("ownerId",t.ownerId).gte("timestamp",now-ALERT_DEDUPE_MS)).order("desc").take(200)).filter(x=>x.kind==="alert").map(x=>x.summary));
+   for(const al of als)if(!seen.has(al))await ctx.db.insert("activities",{ownerId:t.ownerId,kind:"alert",summary:al,timestamp:now});}
   return null;
  }}
 
@@ -190,7 +198,7 @@ export const drain=internalAction({args:{ownerId:v.string(),max:v.optional(v.num
  handler:async(ctx,a)=>{
   let n=0;
   for(;n<(a.max??10);n++){
-   const t=await ctx.runMutation(internal.agent.claimNext,{ownerId:a.ownerId,worker:"builtin"}) as Doc<"agentTasks">|null;
+   const t=await ctx.runMutation(internal.agent.claimNext,{ownerId:a.ownerId,worker:"builtin"});
    if(!t)break;
    const startedAt=Date.now();
    try{
@@ -199,8 +207,8 @@ export const drain=internalAction({args:{ownerId:v.string(),max:v.optional(v.num
     let rival;
     if(t.kind==="reach"&&site&&t.prospectId){const r=await ctx.runQuery(internal.agent.rivalOf,{prospectId:t.prospectId});if(r)rival={name:r.name,site:await fetchSite(r.website)};}
     const result=await ctx.runMutation(internal.agent.runStep,{taskId:t._id,...(site?{site}:{}),...(rival?{rival}:{})});
-    await ctx.runMutation(internal.agent.complete,{taskId:t._id,worker:"builtin",leaseId:t.leaseId!,ok:true,result,startedAt,skipped:!!(result as {skipped?:boolean})?.skipped});
-   }catch(e){await ctx.runMutation(internal.agent.complete,{taskId:t._id,worker:"builtin",leaseId:t.leaseId!,ok:false,error:e instanceof Error?e.message:String(e),startedAt});}
+    await ctx.runMutation(internal.agent.complete,{taskId:t._id,worker:"builtin",leaseId:t.leaseId,ok:true,result,startedAt,skipped:!!(result as {skipped?:boolean})?.skipped});
+   }catch(e){await ctx.runMutation(internal.agent.complete,{taskId:t._id,worker:"builtin",leaseId:t.leaseId,ok:false,error:e instanceof Error?e.message:String(e),startedAt});}
   }
   return n;
  }});
@@ -228,7 +236,8 @@ export const plan=internalMutation({args:{ownerId:v.string()},returns:v.number()
  }});
 export const owners=internalQuery({args:{},returns:v.array(v.string()),handler:async ctx=>(await ctx.db.query("agentConfig").take(50)).filter(r=>!(r.config as AgentConfig).paused).map(r=>r.ownerId)});
 export const tick=internalAction({args:{},returns:v.null(),handler:async ctx=>{
- for(const o of await ctx.runQuery(internal.agent.owners,{})){await ctx.runMutation(internal.agent.plan,{ownerId:o});await ctx.runAction(internal.agent.drain,{ownerId:o,max:20});}
+ // Each owner's drain is its own scheduled action, so one owner's slow sites never hold up another.
+ for(const o of await ctx.runQuery(internal.agent.owners,{})){await ctx.runMutation(internal.agent.plan,{ownerId:o});await ctx.scheduler.runAfter(0,internal.agent.drain,{ownerId:o,max:20});}
  return null;
 }});
 export const dailyDigest=internalMutation({args:{},returns:v.null(),handler:async ctx=>{for(const r of await ctx.db.query("agentConfig").take(200)){if((r.config as AgentConfig).paused)continue;await enqueue(ctx,r.ownerId,"digest",undefined,{day:new Date().toISOString().slice(0,10)});}return null;}});
@@ -239,10 +248,8 @@ export const request=mutation({args:{kind:v.union(v.literal("qualify"),v.literal
 /** Unpark (retry) or cancel a parked/failed task. */
 export const retryTask=mutation({args:{taskId:v.id("agentTasks")},returns:v.null(),handler:async(ctx,a)=>{const user=await owner(ctx);const t=await ctx.db.get(a.taskId);if(!t||t.ownerId!==user)throw Error("Task not found");if(t.status!=="parked"&&t.status!=="failed")return null;await ctx.db.patch(t._id,{status:"queued",attempts:0,notBefore:0,error:undefined,updatedAt:Date.now()});return null;}});
 export const cancelTask=mutation({args:{taskId:v.id("agentTasks")},returns:v.null(),handler:async(ctx,a)=>{const user=await owner(ctx);const t=await ctx.db.get(a.taskId);if(!t||t.ownerId!==user)throw Error("Task not found");if(t.status==="done")return null;await ctx.db.patch(t._id,{status:"failed",leaseUntil:undefined,error:"Cancelled by Johnny",updatedAt:Date.now()});return null;}});
-export const runNow=action({args:{},returns:v.number(),handler:async (ctx):Promise<number>=>{const user:string|null=await ctx.runQuery(internal.agent.whoami,{});if(!user)throw Error("Not signed in");return await ctx.runAction(internal.agent.drainRequested,{ownerId:user});}});
-export const whoami=internalQuery({args:{},returns:v.union(v.string(),v.null()),handler:async ctx=>{try{return await owner(ctx);}catch{return null;}}});
-/** Requested tasks run at L1 even when the loop is paused? No: the kill switch stops everything. */
-export const drainRequested=internalAction({args:{ownerId:v.string()},returns:v.number(),handler:async(ctx,a):Promise<number>=>await ctx.runAction(internal.agent.drain,{ownerId:a.ownerId,max:5})});
+/** Starts a drain in the background (no action-inside-action); the queue and trace update live. */
+export const runNow=mutation({args:{},returns:v.number(),handler:async ctx=>{const user=await owner(ctx);const cfg=await loadConfig(ctx,user);if(cfg.paused)throw Error("The loop is paused");await ctx.scheduler.runAfter(0,internal.agent.drain,{ownerId:user,max:5});return (await ctx.db.query("agentTasks").withIndex("by_owner_status",q=>q.eq("ownerId",user).eq("status","queued")).take(100)).length;}});
 
 // ---------- Observability ----------
 export const trace=query({args:{prospectId:v.id("prospects")},returns:v.any(),handler:async(ctx,a)=>{
@@ -258,14 +265,14 @@ export const digests=query({args:{},returns:v.any(),handler:async ctx=>{const us
 // The secret proves the caller is ours; the worker name must also be registered (allowlisted) for that owner. "builtin" is internal only.
 function checkSecret(secret:string){const s=process.env.AUTOPILOT_SERVICE_SECRET;if(!s||secret!==s)throw Error("Unauthorized worker");}
 function checkWorkerName(worker:string){if(worker==="builtin"||!/^[a-z0-9_-]+:[a-z0-9_.-]{1,40}$/i.test(worker))throw Error("Invalid worker name");}
-export const workerClaim=mutation({args:{secret:v.string(),ownerId:v.string(),worker:v.string(),kinds:v.optional(v.array(taskKind))},returns:v.any(),handler:async(ctx,a)=>{checkSecret(a.secret);checkWorkerName(a.worker);return await claimFor(ctx,{ownerId:a.ownerId,worker:a.worker,...(a.kinds?{kinds:a.kinds}:{})});}});
+export const workerClaim=mutation({args:{secret:v.string(),ownerId:v.string(),worker:v.string(),kinds:v.optional(v.array(taskKind))},returns:claimedTask,handler:async(ctx,a)=>{checkSecret(a.secret);checkWorkerName(a.worker);return await claimFor(ctx,{ownerId:a.ownerId,worker:a.worker,...(a.kinds?{kinds:a.kinds}:{})});}});
 export const workerRenew=mutation({args:{secret:v.string(),taskId:v.id("agentTasks"),worker:v.string(),leaseId:v.string()},returns:v.boolean(),handler:async(ctx,a)=>{checkSecret(a.secret);checkWorkerName(a.worker);return await renewFor(ctx,a);}});
 export const workerComplete=mutation({args:{secret:v.string(),taskId:v.id("agentTasks"),worker:v.string(),leaseId:v.string(),skipped:v.optional(v.boolean()),ok:v.boolean(),result:v.optional(v.any()),error:v.optional(v.string()),usd:v.optional(v.number()),tier:v.optional(v.string()),startedAt:v.number()},returns:v.null(),handler:async(ctx,a)=>{checkSecret(a.secret);checkWorkerName(a.worker);const {secret:_s,...rest}=a;void _s;return await completeFor(ctx,rest);}});
 
 export const statusFor=internalQuery({args:{ownerId:v.string()},returns:v.any(),handler:async(ctx,a)=>{const cfg=await loadConfig(ctx,a.ownerId);const q=await ctx.db.query("agentTasks").withIndex("by_owner_status",x=>x.eq("ownerId",a.ownerId).eq("status","queued")).take(500);return {paused:cfg.paused,levels:cfg.levels,caps:cfg.caps,used:await usedToday(ctx,a.ownerId),queued:q.length};}});
 
-export const workers=query({args:{},returns:v.any(),handler:async ctx=>{const user=await owner(ctx);const now=Date.now();return (await ctx.db.query("agentWorkers").withIndex("by_owner_worker",q=>q.eq("ownerId",user)).take(20)).map(w=>({worker:w.worker,lastSeen:w.lastSeen,stale:now-w.lastSeen>DESKTOP_HEARTBEAT_MS}));}});
-export const tasks=query({args:{},returns:v.any(),handler:async ctx=>{const user=await owner(ctx);const out=[];for(const st of ["claimed","queued","parked","failed"] as const)out.push(...await ctx.db.query("agentTasks").withIndex("by_owner_status",q=>q.eq("ownerId",user).eq("status",st)).take(30));return out.map(t=>({_id:t._id,kind:t.kind,status:t.status,attempts:t.attempts,claimedBy:t.claimedBy,leaseUntil:t.leaseUntil,error:t.error}));}});
+export const workers=query({args:{},returns:v.array(workerRow),handler:async ctx=>{const user=await owner(ctx);const now=Date.now();return (await ctx.db.query("agentWorkers").withIndex("by_owner_worker",q=>q.eq("ownerId",user)).take(20)).map(w=>({worker:w.worker,lastSeen:w.lastSeen,stale:now-w.lastSeen>DESKTOP_HEARTBEAT_MS}));}});
+export const tasks=query({args:{},returns:v.array(taskRow),handler:async ctx=>{const user=await owner(ctx);const out=[];for(const st of ["claimed","queued","parked","failed"] as const)out.push(...await ctx.db.query("agentTasks").withIndex("by_owner_status",q=>q.eq("ownerId",user).eq("status",st)).take(30));return out.map(t=>({_id:t._id,kind:t.kind,status:t.status,attempts:t.attempts,claimedBy:t.claimedBy,leaseUntil:t.leaseUntil,error:t.error}));}});
 
 // ---------- Approval queue (drafts wait for Johnny; approving never sends, Send stays in Sales) ----------
 export const approvals=query({args:{},returns:v.any(),handler:async ctx=>{
@@ -308,3 +315,21 @@ export const optOuts=query({args:{},returns:v.any(),handler:async ctx=>{
 
 // ---------- Live demo test lead: shows the owner how a request arrives (labeled TEST, never a real customer, nothing sent) ----------
 export const sendTestLead=mutation({args:{prospectId:v.id("prospects")},returns:v.any(),handler:async(ctx,a)=>{const user=await owner(ctx);const p=await ctx.db.get(a.prospectId);if(!p||p.ownerId!==user)throw Error("Prospect not found");return await recordTestLead(ctx,p);}});
+
+// ---------- HTTP worker door (Authorization: Bearer <AUTOPILOT_SERVICE_SECRET>); the secret never travels in function args ----------
+export const httpClaim=internalMutation({args:{ownerId:v.string(),worker:v.string(),kinds:v.optional(v.array(taskKind))},returns:claimedTask,handler:async(ctx,a)=>{checkWorkerName(a.worker);return await claimFor(ctx,{ownerId:a.ownerId,worker:a.worker,...(a.kinds?{kinds:a.kinds}:{})});}});
+export const httpRenew=internalMutation({args:{taskId:v.id("agentTasks"),worker:v.string(),leaseId:v.string()},returns:v.boolean(),handler:async(ctx,a)=>{checkWorkerName(a.worker);return await renewFor(ctx,a);}});
+export const httpComplete=internalMutation({args:{taskId:v.id("agentTasks"),worker:v.string(),leaseId:v.string(),ok:v.boolean(),skipped:v.optional(v.boolean()),result:v.optional(v.any()),error:v.optional(v.string()),usd:v.optional(v.number()),tier:v.optional(v.string()),startedAt:v.number()},returns:v.null(),handler:async(ctx,a)=>{checkWorkerName(a.worker);return await completeFor(ctx,a);}});
+
+// ---------- Cleanup (daily): finished tasks after 14 days, runs after 30, digests after 60 ----------
+export const cleanup=internalMutation({args:{},returns:v.number(),handler:async ctx=>{
+ const now=Date.now();let n=0;
+ for(const st of ["done","failed"] as const){
+  const old=(await ctx.db.query("agentTasks").withIndex("by_status_updated",q=>q.eq("status",st).lt("updatedAt",now-14*DAY)).take(300));
+  for(const t of old){await ctx.db.delete(t._id);n++;}
+ }
+ for(const r of await ctx.db.query("agentRuns").withIndex("by_started",q=>q.lt("startedAt",now-30*DAY)).take(500)){await ctx.db.delete(r._id);n++;}
+ for(const d of await ctx.db.query("agentDigests").withIndex("by_created",q=>q.lt("createdAt",now-60*DAY)).take(200)){await ctx.db.delete(d._id);n++;}
+ if(n>=900)await ctx.scheduler.runAfter(60_000,internal.agent.cleanup,{});
+ return n;
+}});

@@ -16,15 +16,22 @@ import {readFileSync,existsSync} from "node:fs";
 
 const env=(k:string)=>{const x=process.env[k];if(!x)throw Error(k+" not set");return x;};
 const client=new ConvexHttpClient(env("CONVEX_URL"));
+// Prefer the HTTP door (secret in the Authorization header). AGENT_LEGACY_ARGS=1 keeps the old mutation path during transition.
+const site=(process.env.CONVEX_SITE_URL??env("CONVEX_URL").replace(/\.convex\.cloud\/?$/,".convex.site")).replace(/\/$/,"");
+const legacy=process.env.AGENT_LEGACY_ARGS==="1";
+async function door<T>(op:"claim"|"renew"|"complete",body:Record<string,unknown>):Promise<T>{
+ const r=await fetch(site+"/agent/"+op,{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+process.env.AUTOPILOT_SERVICE_SECRET},body:JSON.stringify(body)});
+ const j=await r.json() as T&{error?:string};if(!r.ok)throw Error(j.error??"HTTP "+r.status);return j;
+}
 const secret=env("AUTOPILOT_SERVICE_SECRET"),ownerId=env("OWNER_ID"),worker=env("WORKER");
 type Claimed={_id:Id<"agentTasks">;kind:string;leaseId:string;input?:{url?:string}};
 async function once():Promise<boolean>{
- const t=await client.mutation(api.agent.workerClaim,{secret,ownerId,worker,kinds:["recheck","sense"]}) as Claimed|null;
+ const t=(legacy?await client.mutation(api.agent.workerClaim,{secret,ownerId,worker,kinds:["recheck","sense"]}):await door("claim",{ownerId,worker,kinds:["recheck","sense"]})) as Claimed|null;
  if(!t)return false;
  const startedAt=Date.now();let lost=false,last=Date.now();
  const renew=setInterval(async()=>{
   const now=Date.now();if(now-last>LEASE_TTL_MS){lost=true;clearInterval(renew);return;} // slept: lease is gone
-  last=now;try{if(!await client.mutation(api.agent.workerRenew,{secret,taskId:t._id,worker,leaseId:t.leaseId}))lost=true;}catch{/* retry next tick */}
+  last=now;try{const ok=legacy?await client.mutation(api.agent.workerRenew,{secret,taskId:t._id,worker,leaseId:t.leaseId}):await door<boolean>("renew",{taskId:t._id,worker,leaseId:t.leaseId});if(!ok)lost=true;}catch{/* retry next tick */}
  },LEASE_RENEW_MS);
  try{
   let result:unknown={};
@@ -32,8 +39,8 @@ async function once():Promise<boolean>{
   if(t.kind==="sense"){await promisify(execFile)("node",["--import","tsx","scripts/discover-local.mts","--source","mpls,stp","--days","7","--limit","200"]);
    if(existsSync(".data/promote.json")){const recs=JSON.parse(readFileSync(".data/promote.json","utf8")) as unknown[];result={promotable:recs.length,note:"promote via MCP promote_records in batches of 200"};}}
   clearInterval(renew);
-  if(!lost)await client.mutation(api.agent.workerComplete,{secret,taskId:t._id,worker,leaseId:t.leaseId,ok:true,result,startedAt,tier:worker.split(":")[0]});
- }catch(e){clearInterval(renew);if(!lost)await client.mutation(api.agent.workerComplete,{secret,taskId:t._id,worker,leaseId:t.leaseId,ok:false,error:String(e).slice(0,300),startedAt}).catch(()=>undefined);}
+  if(!lost){const b={taskId:t._id,worker,leaseId:t.leaseId,ok:true,result,startedAt,tier:worker.split(":")[0]};if(legacy)await client.mutation(api.agent.workerComplete,{secret,...b});else await door("complete",b);}
+ }catch(e){clearInterval(renew);if(!lost){const b={taskId:t._id,worker,leaseId:t.leaseId,ok:false,error:String(e).slice(0,300),startedAt};await (legacy?client.mutation(api.agent.workerComplete,{secret,...b}):door("complete",b)).catch(()=>undefined);}}
  return true;
 }
 const loop=process.argv.includes("--loop");

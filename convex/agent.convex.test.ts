@@ -4,6 +4,7 @@ import {convexTest} from "convex-test";
 import {afterEach,expect,test,vi} from "vitest";
 import schema from "./schema";
 import {api,internal} from "./_generated/api";
+import type {Id} from "./_generated/dataModel";
 import {DEFAULT_CONFIG,LEASE_TTL_MS,MAX_ATTEMPTS} from "../src/lib/agent-core";
 
 const modules=import.meta.glob(["./**/*.ts","./_generated/*.js","!./**/*.test.ts","!./**/*.d.ts"]);
@@ -182,4 +183,32 @@ test("workflow pieces: reach with rival writes a teardown; test lead is labeled 
  expect(kinds.some(k=>k.startsWith("test_lead:TEST LEAD"))).toBe(true);
  expect(kinds.some(k=>/^pay_to_live:paid done\. Next: repo created/.test(k))).toBe(true);
  expect(await t.run(ctx=>ctx.db.query("outreach").collect())).toHaveLength(1);
+});
+
+test("HTTP worker door: bearer header required; claim/renew/complete over HTTP",async()=>{
+ vi.stubEnv("AUTOPILOT_SERVICE_SECRET","test-secret");
+ const {t,p}=await setup(false,["desktop:3apdbkg"]);
+ await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"recheck",prospectId:p._id});
+ const post=(op:string,body:unknown,auth="Bearer test-secret")=>t.fetch("/agent/"+op,{method:"POST",headers:{"content-type":"application/json",authorization:auth},body:JSON.stringify(body)});
+ expect((await post("claim",{ownerId:"u1",worker:"desktop:3apdbkg"},"Bearer nope")).status).toBe(401);
+ expect((await post("claim",{ownerId:"u1",worker:"builtin"})).status).toBe(409);
+ const task=await (await post("claim",{ownerId:"u1",worker:"desktop:3apdbkg"})).json() as {_id:Id<"agentTasks">;kind:string;leaseId:string};
+ expect(task.kind).toBe("recheck");
+ expect(await (await post("renew",{taskId:task._id,worker:"desktop:3apdbkg",leaseId:task.leaseId})).json()).toBe(true);
+ expect((await post("complete",{taskId:task._id,worker:"desktop:3apdbkg",leaseId:task.leaseId,ok:true,startedAt:Date.now()})).status).toBe(200);
+ expect((await t.run(ctx=>ctx.db.get(task._id)))!.status).toBe("done");
+});
+test("alerts are deduped; settings changes patch only their own field; cleanup removes old finished rows",async()=>{
+ const {t,p}=await setup(false);
+ for(let i=0;i<4;i++){await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"recheck",prospectId:p._id,input:{i}});const k=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});await t.mutation(internal.agent.complete,{taskId:k!._id,worker:"builtin",leaseId:k!.leaseId,ok:false,error:"boom",startedAt:Date.now()});}
+ const alerts=(await t.run(ctx=>ctx.db.query("activities").collect())).filter(a=>a.kind==="alert");
+ expect(new Set(alerts.map(a=>a.summary)).size).toBe(alerts.length);
+ const u=t.withIdentity({subject:"u1"});
+ await u.mutation(api.agent.setAllowlist,{workers:["desktop:3apdbkg"]});
+ await u.mutation(api.agent.setPaused,{paused:true});
+ const cfg=(await t.run(ctx=>ctx.db.query("agentConfig").first()))!.config as {paused:boolean;allowlist:string[]};
+ expect(cfg.paused).toBe(true);expect(cfg.allowlist).toEqual(["desktop:3apdbkg"]);
+ await t.run(async ctx=>{for(const x of await ctx.db.query("agentTasks").collect())await ctx.db.patch(x._id,{status:"done",updatedAt:1});for(const r of await ctx.db.query("agentRuns").collect())await ctx.db.patch(r._id,{startedAt:1});});
+ expect(await t.mutation(internal.agent.cleanup,{})).toBeGreaterThan(0);
+ expect(await t.run(ctx=>ctx.db.query("agentTasks").collect())).toHaveLength(0);
 });
