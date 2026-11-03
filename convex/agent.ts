@@ -255,3 +255,42 @@ export const statusFor=internalQuery({args:{ownerId:v.string()},returns:v.any(),
 
 export const workers=query({args:{},returns:v.any(),handler:async ctx=>{const user=await owner(ctx);const now=Date.now();return (await ctx.db.query("agentWorkers").withIndex("by_owner_worker",q=>q.eq("ownerId",user)).take(20)).map(w=>({worker:w.worker,lastSeen:w.lastSeen,stale:now-w.lastSeen>DESKTOP_HEARTBEAT_MS}));}});
 export const tasks=query({args:{},returns:v.any(),handler:async ctx=>{const user=await owner(ctx);const out=[];for(const st of ["claimed","queued","parked","failed"] as const)out.push(...await ctx.db.query("agentTasks").withIndex("by_owner_status",q=>q.eq("ownerId",user).eq("status",st)).take(30));return out.map(t=>({_id:t._id,kind:t.kind,status:t.status,attempts:t.attempts,claimedBy:t.claimedBy,leaseUntil:t.leaseUntil,error:t.error}));}});
+
+// ---------- Approval queue (drafts wait for Johnny; approving never sends, Send stays in Sales) ----------
+export const approvals=query({args:{},returns:v.any(),handler:async ctx=>{
+ const user=await owner(ctx);
+ const drafts=(await ctx.db.query("outreach").withIndex("by_owner",q=>q.eq("ownerId",user)).order("desc").take(200)).filter(o=>o.status==="draft").slice(0,25);
+ const sup=await loadSuppressions(ctx,user);
+ return await Promise.all(drafts.map(async o=>{
+  const p=await ctx.db.get(o.prospectId);
+  const acts=await ctx.db.query("activities").withIndex("by_prospect",q=>q.eq("prospectId",o.prospectId)).order("desc").take(30);
+  const card=acts.find(x=>x.kind==="call_now")??acts.find(x=>x.kind==="call_card");
+  const issues=[...(/Unsubscribe|opt out/i.test(o.body)?[]:["No opt-out line"]),...(/Oakdale, MN 55128/.test(o.body)?[]:["No postal address"]),...(p&&isSuppressed({contact:p.contact,website:p.website},sup)?["Recipient opted out"]:[])];
+  return {id:o._id,prospectId:o.prospectId,name:p?.name??"(deleted)",subject:o.subject,body:o.body,updatedAt:o.updatedAt,callCard:card?.summary??null,issues};
+ }));
+}});
+export const approveDraft=mutation({args:{id:v.id("outreach")},returns:v.null(),handler:async(ctx,a)=>{
+ const user=await owner(ctx);const o=await ctx.db.get(a.id);if(!o||o.ownerId!==user)throw Error("Draft not found");
+ if(o.status!=="draft")return null;
+ const p=await ctx.db.get(o.prospectId);
+ if(p&&isSuppressed({contact:p.contact,website:p.website},await loadSuppressions(ctx,user)))throw Error("This business opted out; the draft cannot be approved");
+ if(!/Unsubscribe|opt out/i.test(o.body))throw Error("Add the opt-out line before approving (CAN-SPAM)");
+ await ctx.db.patch(o._id,{status:"approved",updatedAt:Date.now()});
+ await ctx.db.insert("activities",{ownerId:user,prospectId:o.prospectId,kind:"draft_approved",summary:"Draft approved; not sent (press Send in Sales)",timestamp:Date.now()});
+ return null;
+}});
+export const discardDraft=mutation({args:{id:v.id("outreach")},returns:v.null(),handler:async(ctx,a)=>{
+ const user=await owner(ctx);const o=await ctx.db.get(a.id);if(!o||o.ownerId!==user)throw Error("Draft not found");
+ if(o.status!=="draft")throw Error("Only unsent drafts can be discarded");
+ await ctx.db.delete(o._id);
+ await ctx.db.insert("activities",{ownerId:user,prospectId:o.prospectId,kind:"draft_discarded",summary:"Draft discarded: "+o.subject.slice(0,120),timestamp:Date.now()});
+ return null;
+}});
+// ---------- Opt-out state ----------
+export const optOuts=query({args:{},returns:v.any(),handler:async ctx=>{
+ const user=await owner(ctx);
+ const sup=await ctx.db.query("suppressions").withIndex("by_owner",q=>q.eq("ownerId",user)).order("desc").take(50);
+ const outcomes=await ctx.db.query("outcomes").withIndex("by_owner_time",q=>q.eq("ownerId",user)).order("desc").take(500);
+ const oneClick=outcomes.filter(o=>o.kind==="lost"&&o.reason==="opt_out");
+ return {suppressed:sup.map(r=>({id:r._id,kind:r.kind,value:r.value,reason:r.reason??"",createdAt:r.createdAt})),oneClickOptOuts:oneClick.length,lastOptOutAt:oneClick[0]?.at??null,footer:process.env.OUTREACH_POSTAL_ADDRESS?"custom":"13 5th Ave, Oakdale, MN 55128"};
+}});

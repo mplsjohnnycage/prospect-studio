@@ -57,3 +57,42 @@ export function AgentTrace({prospectId}:{prospectId:string}){
   <ul className="max-h-32 overflow-auto text-[11px] text-muted-foreground">{(rows??[]).slice(-12).map((r,i)=><li key={i}>{new Date(r.at).toLocaleString()} · {r.type} · {r.what.slice(0,120)}</li>)}</ul>
  </div>;
 }
+
+type Approval={id:Id<"outreach">;prospectId:string;name:string;subject:string;body:string;updatedAt:number;callCard:string|null;issues:string[]};
+/** Drafts the loop prepared. Approve marks it ready; sending stays a manual Send in Sales. */
+export function ApprovalQueue(){
+ const rows=useQuery(api.agent.approvals,{}) as Approval[]|undefined;
+ const approve=useMutation(api.agent.approveDraft);
+ const discard=useMutation(api.agent.discardDraft);
+ const edit=useMutation(api.outreach.edit);
+ const [open,setOpen]=useState<string|null>(null);
+ const [draft,setDraft]=useState({subject:"",body:""});
+ if(!rows)return <div className="text-xs text-muted-foreground">Loading approvals...</div>;
+ const act=(p:Promise<unknown>,ok:string)=>p.then(()=>toast.success(ok),e=>toast.error(e instanceof Error?e.message:String(e)));
+ return <div className="mb-6 rounded-2xl border border-border bg-card p-5">
+  <p className="text-sm font-semibold">Approval queue <span className="text-xs font-normal text-muted-foreground">({rows.length} drafts · nothing is sent from here)</span></p>
+  {rows.length===0&&<p className="mt-2 text-xs text-muted-foreground">No drafts waiting.</p>}
+  <ul className="mt-2 grid gap-3">{rows.map(r=><li key={r.id} className="rounded-xl border border-border p-3 text-xs">
+   <div className="flex items-center justify-between gap-2"><b>{r.name}</b><span className="text-muted-foreground">{r.subject}</span></div>
+   {r.issues.length>0&&<p className="mt-1 text-amber-600">Before approving: {r.issues.join("; ")}</p>}
+   {r.callCard&&<pre className="mt-2 whitespace-pre-wrap rounded bg-muted p-2 text-[11px]">{r.callCard}</pre>}
+   {open===r.id?<div className="mt-2 grid gap-2"><Input value={draft.subject} onChange={e=>setDraft({...draft,subject:e.target.value})}/><textarea className="min-h-40 rounded border border-border p-2" value={draft.body} onChange={e=>setDraft({...draft,body:e.target.value})}/>
+    <div className="flex gap-2"><Button size="sm" onClick={()=>act(edit({id:r.id,subject:draft.subject,body:draft.body}),"Saved").then(()=>setOpen(null))}>Save</Button><Button size="sm" variant="outline" onClick={()=>setOpen(null)}>Close</Button></div></div>
+   :<pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap text-[11px] text-muted-foreground">{r.body}</pre>}
+   <div className="mt-2 flex gap-2"><Button size="sm" onClick={()=>act(approve({id:r.id}),"Approved. Send it from Sales when ready.")}>Approve</Button>
+    <Button size="sm" variant="outline" onClick={()=>{setOpen(r.id);setDraft({subject:r.subject,body:r.body});}}>Edit</Button>
+    <Button size="sm" variant="outline" onClick={()=>{if(confirm("Discard this draft?"))act(discard({id:r.id}),"Discarded");}}>Discard</Button></div>
+  </li>)}</ul>
+ </div>;
+}
+type OptOutState={suppressed:{id:string;kind:string;value:string;reason:string;createdAt:number}[];oneClickOptOuts:number;lastOptOutAt:number|null;footer:string};
+/** Who opted out (one-click links and manual suppressions). Suppressed contacts never get a draft. */
+export function OptOutPanel(){
+ const s=useQuery(api.agent.optOuts,{}) as OptOutState|undefined;
+ if(!s)return null;
+ return <div className="mb-6 rounded-2xl border border-border bg-card p-5 text-xs">
+  <p className="text-sm font-semibold">Opt-outs</p>
+  <p className="mt-1 text-muted-foreground">{s.oneClickOptOuts} one-click opt-outs{s.lastOptOutAt?" · last "+new Date(s.lastOptOutAt).toLocaleString():""} · {s.suppressed.length} suppressed contacts · footer address: {s.footer}</p>
+  <ul className="mt-2 max-h-32 overflow-auto">{s.suppressed.map(x=><li key={x.id}>{x.kind}: {x.value}{x.reason?" ("+x.reason+")":""} · {new Date(x.createdAt).toLocaleDateString()}</li>)}</ul>
+ </div>;
+}

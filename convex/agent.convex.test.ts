@@ -154,3 +154,17 @@ test("digest and weekly learn write drafts only; two owners' digests on the same
  const d=await t.run(ctx=>ctx.db.query("agentDigests").withIndex("by_owner_time",q=>q.eq("ownerId","u1")).collect());
  expect(d.map(x=>x.kind).sort()).toEqual(["daily","weekly"]);
 });
+
+test("approval queue: lists drafts with call card; approve never sends; opted-out recipients blocked",async()=>{
+ const {t,p}=await setup(false);
+ await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"reach",prospectId:p._id});
+ const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});
+ await t.mutation(internal.agent.runStep,{taskId:task!._id});
+ const u=t.withIdentity({subject:"u1"});
+ const rows=await u.query(api.agent.approvals,{});
+ expect(rows).toHaveLength(1);expect(rows[0].callCard).toBeTruthy();
+ await u.mutation(api.agent.approveDraft,{id:rows[0].id});
+ const o=(await t.run(ctx=>ctx.db.get(rows[0].id)))!;
+ expect(o.status).toBe("approved");expect(o.sentAt).toBeUndefined();
+ expect((await u.query(api.agent.optOuts,{})).suppressed).toHaveLength(0);
+});
