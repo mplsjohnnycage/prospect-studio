@@ -40,7 +40,7 @@ test("L1: build tasks are not claimed; reach drafts once with call card, counts 
  expect(await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin",kinds:["build"]})).toBeNull();
  await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"reach",prospectId:p._id});
  const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin",kinds:["reach"]});
- const r=await t.mutation(internal.agent.runStep,{taskId:task!._id});
+ const r=await t.mutation(internal.agent.runStep,{taskId:task!._id}) as {drafted?:boolean};
  expect(r.drafted).toBe(true);
  await t.mutation(internal.agent.complete,done(task as never,{result:r}));
  const out=await t.run(ctx=>ctx.db.query("outreach").collect());
@@ -55,7 +55,7 @@ test("reach with a fixed site drops before drafting",async()=>{
  const {t,p}=await setup(false);
  await t.mutation(internal.agent.enqueueInternal,{ownerId:"u1",kind:"reach",prospectId:p._id});
  const task=await t.mutation(internal.agent.claimNext,{ownerId:"u1",worker:"builtin"});
- const r=await t.mutation(internal.agent.runStep,{taskId:task!._id,site:{state:"ok",score:95,issues:[]}});
+ const r=await t.mutation(internal.agent.runStep,{taskId:task!._id,site:{state:"ok",score:95,issues:[]}}) as {decision?:string};
  expect(r.decision).toBe("drop");
  expect(await t.run(ctx=>ctx.db.query("outreach").collect())).toHaveLength(0);
 });

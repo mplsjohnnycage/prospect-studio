@@ -15,7 +15,7 @@ export const pageContext=internalQuery({
   if(!c||!c.html)return null;
   const p=await ctx.db.get(c.prospectId);
   if(!p||p.status==="blocked")return null;
-  return {businessName:p.name,conceptId:c._id,prospectId:p._id,ownerId:p.ownerId};
+  return {businessName:p.name,trade:p.trade,conceptId:c._id,prospectId:p._id,ownerId:p.ownerId};
  }
 });
 
