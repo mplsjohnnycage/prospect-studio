@@ -1,5 +1,5 @@
 // Prospect Studio sandbox agent options: single source of truth (2026-11-03).
-// Status: "verified" = CLI ran `--version` free on the box 2026-11-03 and is on a documented
+// Status (2026-11-03 11:40 CT): "verified" = CLI `--version` ran free on the Grok Bot box (NOT inside an sbx sandbox: sbx not installable on desktop, Win10 + Hypervisor Platform off) and is on a documented
 // Docker Sandboxes / Rivet sandbox-agent list. Nothing here has been signed in or run on a task.
 // Env var NAMES only. Subscription / OAuth sign-in is preferred; API keys are fallback only.
 export type AgentId = "claude-code" | "codex" | "opencode" | "pi" | "grok" | "cursor-sdk" | "cli";
@@ -28,15 +28,15 @@ export const AGENT_OPTIONS: Record<AgentId, AgentOption> = {
     launch: "sbx run shell -- pi  |  Rivet actor @rivet-dev/pi 0.5.5", headless: "pi -p --mode json", smoke: "pi --version",
     auth: { mode: "subscription-oauth", signIn: "pi /login (ChatGPT; @rivet-dev/pi oauth credentials)" }, mcp: true, role: "primary",
     dockerSandboxes: false, rivetSandboxAgent: true, status: "verified", notes: "Primary harness. Not a native Docker Sandboxes agent: runs via the Shell sandbox. CLI runs; sign-in untested." },
-  grok: { id: "grok", label: "Grok CLI", npm: "@vibe-kit/grok-cli", versionSeen: "1.0.1",
+  grok: { id: "grok", label: "Grok CLI", npm: "@vibe-kit/grok-cli", versionSeen: "0.0.34 (binary prints 1.0.1)",
     launch: "sbx run shell -- grok", headless: "grok -p", smoke: "grok --version",
     auth: { mode: "api-key", fallbackEnv: ["GROK_API_KEY"] }, mcp: "unknown",
     dockerSandboxes: false, rivetSandboxAgent: false, status: "unverified",
-    notes: "Community CLI, not on either supported list; no subscription sign-in found; any use needs an xAI key = spend -> needs Johnny's go." },
+    notes: "Binary = @vibe-kit/grok-cli 0.0.34 dist/index.js (community, not xAI); auth only -k/--api-key or GROK_API_KEY, no sign-in; on neither supported list; no subscription sign-in found; any use needs an xAI key = spend -> needs Johnny's go." },
   "cursor-sdk": { id: "cursor-sdk", label: "Cursor (SDK / cursor-agent)", npm: "@cursor/sdk", versionSeen: "1.3.0",
     launch: "sbx run cursor", headless: "cursor-agent -p --output-format stream-json", smoke: "cursor-agent --version",
     auth: { mode: "subscription-oauth", signIn: "cursor-agent login", fallbackEnv: ["CURSOR_API_KEY"] }, mcp: true,
-    dockerSandboxes: true, rivetSandboxAgent: true, status: "unverified", notes: "Package exists on npm; local import/--version smoke did not complete." },
+    dockerSandboxes: true, rivetSandboxAgent: true, status: "verified", notes: "@cursor/sdk 1.3.0 import ok on Node 24 (exports Agent, AuthenticationError...). SDK, not a CLI; cursor-agent binary not tested." },
   cli: { id: "cli", label: "Plain CLI (shell)", launch: "sbx run shell", headless: "sh -c <cmd>", smoke: "sh -c 'echo ok'",
     auth: { mode: "none" }, mcp: false, dockerSandboxes: true, rivetSandboxAgent: false, status: "verified", notes: "Agent-less sandbox; Tier 2 default." },
 };

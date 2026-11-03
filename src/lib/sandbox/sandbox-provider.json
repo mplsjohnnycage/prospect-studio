@@ -1,5 +1,5 @@
 {
-  "_doc": "Docker Sandboxes ('Docker sandbox cloud') provider for Prospect Studio. Staged 2026-11-03; NOT applied. Desktop has no sbx CLI yet; legacy `docker sandbox` is removed in Docker 29.9.2.",
+  "_doc": "Docker Sandboxes ('Docker sandbox cloud') provider for Prospect Studio. Staged 2026-11-03; NOT applied. sbx 0.50.1 (winget Docker.sbx, MSI sha256 7ac140b4...) NOT installed: desktop is Windows 10 Pro 19045, local sandboxes need Windows 11 + Hypervisor Platform (Disabled); install attempt hit OutOfMemory and Docker restarted. Use fallback docker-run-tier2 until resolved.",
   "provider": "docker-sandboxes",
   "cli": "sbx",
   "host": "DESKTOP-3APDBKG",
