@@ -22,18 +22,20 @@ test("levels, caps and evals gate autonomy", () => {
 test("claims, leases, retries, idempotent keys", () => {
   assert.equal(A.mayClaim(A.DEFAULT_CONFIG, "chatgpt"), false);
   assert.equal(A.mayClaim({ ...A.DEFAULT_CONFIG, allowlist: ["chatgpt"] }, "chatgpt"), true);
-  assert.equal(A.mayClaim(A.DEFAULT_CONFIG, "desktop:jn"), true);
+  assert.equal(A.mayClaim(A.DEFAULT_CONFIG, "desktop:jn"), false); // names are not trusted
+  assert.equal(A.mayClaim({ ...A.DEFAULT_CONFIG, allowlist: ["desktop:jn"] }, "desktop:jn"), true);
+  assert.equal(A.leaseFor("desktop:jn"), 90_000);
   assert.equal(A.taskKey("build", "p1", { a: 1 }), A.taskKey("build", "p1", { a: 1 }));
   assert.notEqual(A.taskKey("build", "p1", { a: 1 }), A.taskKey("build", "p1", { a: 2 }));
   const t: A.AgentTask = { key: "k", kind: "build", status: "claimed", attempts: 1, leaseUntil: 10 };
   assert.equal(A.claimableTask(t, 5), false); assert.equal(A.claimableTask(t, 11), true);
   assert.equal(A.onFailure(t, 0).notBefore, 60_000);
-  assert.equal(A.onFailure({ ...t, attempts: 5 }, 0).status, "parked");
+  assert.equal(A.onFailure({ ...t, attempts: 3 }, 0).status, "parked");
   assert.equal(A.tierFor("build", { heavy: true }), "sprite");
 });
 test("desktop is primary; sprite only when desktop heartbeat is stale", () => {
   assert.equal(A.fallbackAllowed("sprite:p", 1000, 2000), false);
-  assert.equal(A.fallbackAllowed("sprite:p", 0, 10 * 60_000), true);
+  assert.equal(A.fallbackAllowed("sprite:p", 0, 2 * 60_000), true);
   assert.equal(A.fallbackAllowed("sprite:p", undefined, 1), true);
   assert.equal(A.fallbackAllowed("desktop:3apdbkg", undefined, 1), true);
 });

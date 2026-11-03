@@ -1,29 +1,40 @@
 // Agentic step 8: desktop/Sprite worker. Stateless: claim one task -> run -> write result -> exit (or loop with --loop).
 // Tier 1 = desktop (WORKER=desktop:3apdbkg). Fallback = Sprite (WORKER=sprite:prospect), which the server lets claim only when
-// the desktop heartbeat is older than 5 minutes; a desktop task whose lease expires returns to the queue.
+// the desktop heartbeat is older than 75 s. Johnny must register each worker name in Settings > Agent loop > allowlist.
+// Leases (Tailscale plan): 90 s TTL, renewed every 20 s while working, 3 attempts then parked for review.
+// Idle polls every 30 s double as the heartbeat. A wall-clock jump (PC slept) drops the lease; the server re-queues it.
 // Env: CONVEX_URL, AUTOPILOT_SERVICE_SECRET, OWNER_ID, WORKER. Never sends anything.
 // Tasks it handles: recheck (live site fetch from a residential IP) and sense (free discovery -> promote).
 import {ConvexHttpClient} from "convex/browser";
 import {api} from "../convex/_generated/api";
+import type {Id} from "../convex/_generated/dataModel";
 import {siteHealth} from "../src/lib/revenue-engine";
-import {execFileSync} from "node:child_process";
+import {LEASE_RENEW_MS,LEASE_TTL_MS,WORKER_HEARTBEAT_MS} from "../src/lib/agent-core";
+import {execFile} from "node:child_process";
+import {promisify} from "node:util";
 import {readFileSync,existsSync} from "node:fs";
 
 const env=(k:string)=>{const x=process.env[k];if(!x)throw Error(k+" not set");return x;};
 const client=new ConvexHttpClient(env("CONVEX_URL"));
 const secret=env("AUTOPILOT_SERVICE_SECRET"),ownerId=env("OWNER_ID"),worker=env("WORKER");
+type Claimed={_id:Id<"agentTasks">;kind:string;leaseId:string;input?:{url?:string}};
 async function once():Promise<boolean>{
- const t=await client.mutation(api.agent.workerClaim,{secret,ownerId,worker,kinds:["recheck","sense"]}) as {_id:string;kind:string;input?:{url?:string}}|null;
+ const t=await client.mutation(api.agent.workerClaim,{secret,ownerId,worker,kinds:["recheck","sense"]}) as Claimed|null;
  if(!t)return false;
- const startedAt=Date.now();
+ const startedAt=Date.now();let lost=false,last=Date.now();
+ const renew=setInterval(async()=>{
+  const now=Date.now();if(now-last>LEASE_TTL_MS){lost=true;clearInterval(renew);return;} // slept: lease is gone
+  last=now;try{if(!await client.mutation(api.agent.workerRenew,{secret,taskId:t._id,worker,leaseId:t.leaseId}))lost=true;}catch{/* retry next tick */}
+ },LEASE_RENEW_MS);
  try{
   let result:unknown={};
   if(t.kind==="recheck"&&t.input?.url){const s=Date.now();try{const r=await fetch(t.input.url,{signal:AbortSignal.timeout(8000)});result=siteHealth({url:r.url,status:r.status,https:r.url.startsWith("https:"),html:(await r.text()).slice(0,200_000),loadMs:Date.now()-s});}catch{result=siteHealth({url:t.input.url,dnsFailed:true});}}
-  if(t.kind==="sense"){execFileSync("node",["--import","tsx","scripts/discover-local.mts","--source","mpls,stp","--days","7","--limit","200"],{stdio:"inherit"});
+  if(t.kind==="sense"){await promisify(execFile)("node",["--import","tsx","scripts/discover-local.mts","--source","mpls,stp","--days","7","--limit","200"]);
    if(existsSync(".data/promote.json")){const recs=JSON.parse(readFileSync(".data/promote.json","utf8")) as unknown[];result={promotable:recs.length,note:"promote via MCP promote_records in batches of 200"};}}
-  await client.mutation(api.agent.workerComplete,{secret,taskId:t._id as never,worker,ok:true,result,startedAt,tier:worker.split(":")[0]});
- }catch(e){await client.mutation(api.agent.workerComplete,{secret,taskId:t._id as never,worker,ok:false,error:String(e).slice(0,300),startedAt});}
+  clearInterval(renew);
+  if(!lost)await client.mutation(api.agent.workerComplete,{secret,taskId:t._id,worker,leaseId:t.leaseId,ok:true,result,startedAt,tier:worker.split(":")[0]});
+ }catch(e){clearInterval(renew);if(!lost)await client.mutation(api.agent.workerComplete,{secret,taskId:t._id,worker,leaseId:t.leaseId,ok:false,error:String(e).slice(0,300),startedAt}).catch(()=>undefined);}
  return true;
 }
 const loop=process.argv.includes("--loop");
-do{const had=await once();if(!loop)break;await new Promise(r=>setTimeout(r,had?1000:60_000));}while(true);
+do{const had=await once().catch(e=>{console.error(String(e).slice(0,200));return false;});if(!loop)break;await new Promise(r=>setTimeout(r,had?1000:WORKER_HEARTBEAT_MS));}while(true);

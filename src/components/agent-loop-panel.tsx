@@ -22,6 +22,8 @@ export function AgentLoopPanel(){
  const setPaused=useMutation(api.agent.setPaused);
  const setLevel=useMutation(api.agent.setStageLevel);
  const setAllow=useMutation(api.agent.setAllowlist);
+ const retryTask=useMutation(api.agent.retryTask);
+ const cancelTask=useMutation(api.agent.cancelTask);
  const runNow=useAction(api.agent.runNow);
  const [allow,setAllowText]=useState("");
  if(!s)return <div className="text-xs text-muted-foreground">Loading agent loop...</div>;
@@ -36,9 +38,9 @@ export function AgentLoopPanel(){
   <p className="text-[11px] text-muted-foreground">Today: demos {s.used.demos}/{c.caps.demosPerDay} · drafts {s.used.drafts}/{c.caps.draftsPerDay} · promotes {s.used.promotes}/{c.caps.promotesPerDay} · queued {s.queued} · parked {s.parked} · evals passed: {Object.keys(c.evalsPassed).filter(k=>c.evalsPassed[k as AgentStage]).join(", ")||"none"}</p>
   <div><p className="text-[11px] font-medium">Workers (desktop is primary; Sprite runs only when the desktop is offline)</p>
    {(workers??[]).length?<ul className="text-[11px]">{workers!.map(w=><li key={w.worker}>{w.worker}: {ago(w.lastSeen)}{w.stale?" (offline)":""}</li>)}</ul>:<p className="text-[11px] text-muted-foreground">No worker has checked in yet. Start scripts/desktop/start-agent-worker.ps1 on DESKTOP-3APDBKG.</p>}</div>
-  <div className="flex gap-2"><Input className="h-8 text-xs" placeholder={"Outside agents allowed to claim (comma separated). Current: "+(c.allowlist.join(", ")||"none")} value={allow} onChange={e=>setAllowText(e.target.value)}/>
+  <div className="flex gap-2"><Input className="h-8 text-xs" placeholder={"Registered workers and outside agents, e.g. desktop:3apdbkg, sprite:prospect (comma separated). Current: "+(c.allowlist.join(", ")||"none")} value={allow} onChange={e=>setAllowText(e.target.value)}/>
    <Button size="sm" variant="outline" onClick={()=>act(()=>setAllow({workers:allow.split(",")}),"Allowlist saved")}>Save</Button></div>
-  <div><p className="text-[11px] font-medium">Task queue</p><ul className="max-h-40 overflow-auto text-[11px]">{(tasks??[]).map(t=><li key={t._id}>{t.kind} · {t.status}{t.claimedBy?" · "+t.claimedBy:""} · tries {t.attempts}{t.error?" · "+t.error:""}</li>)}</ul></div>
+  <div><p className="text-[11px] font-medium">Task queue</p><ul className="max-h-40 overflow-auto text-[11px]">{(tasks??[]).map(t=><li key={t._id} className="flex items-center gap-2"><span className="flex-1">{t.kind} · {t.status}{t.claimedBy?" · "+t.claimedBy:""}{t.status==="claimed"&&t.leaseUntil?" · lease to "+new Date(t.leaseUntil).toLocaleTimeString():""} · tries {t.attempts}{t.error?" · "+t.error:""}</span>{(t.status==="parked"||t.status==="failed")&&<button type="button" className="underline" onClick={()=>retryTask({taskId:t._id}).then(()=>toast.success("Re-queued"),e=>toast.error(String(e)))}>Retry</button>}{(t.status==="queued"||t.status==="parked"||t.status==="claimed")&&<button type="button" className="underline" onClick={()=>cancelTask({taskId:t._id}).then(()=>toast.success("Cancelled"),e=>toast.error(String(e)))}>Cancel</button>}</li>)}</ul></div>
   <div><p className="text-[11px] font-medium">Digests (drafts, never emailed)</p>{(digests??[]).slice(0,3).map(d=><pre key={d._id} className="whitespace-pre-wrap text-[11px] text-muted-foreground">{d.subject}{"\n"}{d.body}</pre>)}</div>
  </div>;
 }

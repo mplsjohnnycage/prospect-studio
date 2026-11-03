@@ -34,11 +34,13 @@ export function setLevel(cfg: AgentConfig, stage: AgentStage, level: Level): Age
   if (level >= 2 && !(cfg.evalsPassed[stage] ?? 0)) throw Error(stage + " eval has not passed; cannot raise above L1");
   return { ...cfg, levels: { ...cfg.levels, [stage]: level } };
 }
-export function mayClaim(cfg: AgentConfig, worker: string): boolean { return worker === "builtin" || worker.startsWith("desktop:") || worker.startsWith("sprite:") || cfg.allowlist.includes(worker); }
+/** Only the in-Convex builtin worker is trusted by name. Desktop, Sprite and outside agents must be registered (allowlisted) by Johnny. */
+export function mayClaim(cfg: AgentConfig, worker: string): boolean { return worker === "builtin" || cfg.allowlist.includes(worker); }
 
 // ---------- Tasks: lease, retry, idempotency ----------
 export type AgentTask = { key: string; kind: TaskKind; status: "queued" | "claimed" | "done" | "failed" | "parked"; attempts: number; leaseUntil?: number; notBefore?: number; claimedBy?: string };
-export const MAX_ATTEMPTS = 5;
+/** Tailscale worker plan: 3 attempts, then needs review (parked). */
+export const MAX_ATTEMPTS = 3;
 export function taskKey(kind: TaskKind, prospectId: string, input: unknown): string {
   const s = JSON.stringify(input ?? null); let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
@@ -47,7 +49,11 @@ export function taskKey(kind: TaskKind, prospectId: string, input: unknown): str
 export function backoffMs(attempts: number): number { return Math.min(6 * 3_600_000, 60_000 * 2 ** Math.max(0, attempts - 1)); }
 export function claimableTask(t: AgentTask, now: number): boolean { return (t.status === "queued" && (t.notBefore ?? 0) <= now) || (t.status === "claimed" && (t.leaseUntil ?? 0) < now); }
 export function onFailure(t: AgentTask, now: number): AgentTask { const attempts = t.attempts; return attempts >= MAX_ATTEMPTS ? { ...t, status: "parked", leaseUntil: undefined } : { ...t, status: "queued", leaseUntil: undefined, notBefore: now + backoffMs(attempts) }; }
-export function leaseFor(worker: string): number { return worker.startsWith("desktop:") ? 15 * 60_000 : worker.startsWith("sprite:") ? 20 * 60_000 : 5 * 60_000; }
+/** External workers: 90 s lease renewed every 20 s (LEASE_RENEW_MS). The builtin runs inside one Convex action, so it gets 10 min. */
+export const LEASE_TTL_MS = 90_000;
+export const LEASE_RENEW_MS = 20_000;
+export const WORKER_HEARTBEAT_MS = 30_000;
+export function leaseFor(worker: string): number { return worker === "builtin" ? 10 * 60_000 : LEASE_TTL_MS; }
 /** Tier: free Convex action unless the task needs a browser/local model (desktop) or heavy build (sprite). */
 export function tierFor(kind: TaskKind, needs: { browser?: boolean; heavy?: boolean } = {}): "convex" | "desktop" | "sprite" { return needs.heavy ? "sprite" : needs.browser || kind === "recheck" && needs.browser ? "desktop" : "convex"; }
 
@@ -132,7 +138,8 @@ export function digest(d: { promoted: number; built: number; drafted: number; fa
 export { composeWhyNow, type Gates };
 
 // ---------- Desktop-primary tiering (Johnny: runtime lives on DESKTOP-3APDBKG) ----------
-export const DESKTOP_HEARTBEAT_MS = 5 * 60_000;
+/** A worker is online if its heartbeat is under 75 s old (Tailscale plan). */
+export const DESKTOP_HEARTBEAT_MS = 75_000;
 /** Desktop is Tier 1. A Sprite/sandbox worker may claim only when no desktop heartbeat is fresh. */
 export function fallbackAllowed(worker: string, lastDesktopSeen: number | undefined, now: number): boolean {
   if (!worker.startsWith("sprite:")) return true;
