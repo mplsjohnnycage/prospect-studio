@@ -6,7 +6,9 @@ import {v} from "convex/values";
 import {RateLimiter,HOUR} from "@convex-dev/rate-limiter";
 import {owner} from "./identity";
 import {directions} from "../src/lib/domain";
-import {candidateFromSearch,qualifyBusiness,selectDemoEligible,composeOutreach} from "../src/lib/prospect-intelligence";
+import {candidateFromSearch,qualifyBusiness} from "../src/lib/prospect-intelligence";
+import {selectDemoBudget,composeWhyNow,paidSourceAllowed,POSTAL_ADDRESS,type TriggerType,type GateResult} from "../src/lib/revenue-engine";
+import {logStageCost} from "./outcomes";
 import {loadSuppressions} from "./suppressions";
 import {isSuppressed} from "../src/lib/suppression";
 import {assessOpportunity,buildSearchQueries,extractContacts,rankScore,siteKey,websiteVariants} from "../src/lib/prospect-signals";
@@ -21,13 +23,18 @@ export async function ranked(ctx:QueryCtx|MutationCtx,ownerId:string,key:string)
  const pool=await ctx.db.query("prospects").withIndex("by_owner_campaign",q=>q.eq("ownerId",ownerId).eq("campaignKey",key)).take(1001);
  if(pool.length>1000)throw Error("Cohort exceeds 1,000 prospects; automatic demo generation paused for safe pagination");
  const qualified=pool.filter(p=>p.qualified===true&&p.status!=="paused"&&p.status!=="blocked");
- const demoIds=selectDemoEligible(qualified.map(p=>({id:p._id,score:rankScore(p.score,p.opportunity),qualified:true,paused:false}))).map(p=>p.id);
+ // v3 item 2: daily hand-approval capacity replaces the old floor(pool/10) rule.
+ const capacity=Number(process.env.DAILY_DEMO_CAPACITY)||10;
+ const dayStart=Date.now()-86_400_000;
+ const built=(p:Doc<"prospects">)=>["Demo","Outreach","Convert","Produce"].includes(p.stage);
+ const usedToday=qualified.filter(p=>built(p)&&p.updatedAt>=dayStart).length;
+ const demoIds=selectDemoBudget(qualified.map(p=>({id:p._id,score:rankScore(p.score,p.opportunity),qualified:true,paused:false,tier:p.tier as GateResult["tier"]|undefined,alreadyBuilt:built(p),trigger:p.triggerType?{type:p.triggerType as TriggerType,date:p.triggerDate,source:p.triggerSource}:undefined})),{dailyCapacity:capacity,usedToday,scoreFloor:Number(process.env.DEMO_SCORE_FLOOR)||50}).map(p=>p.id);
  return {pool,qualified,demoIds};
 }
 export async function requireTopDecile(ctx:MutationCtx,p:Doc<"prospects">) {
  if(!p.campaignKey||!p.qualified)throw Error("Demo generation requires an automatically qualified research cohort");
  const rank=await ranked(ctx,p.ownerId,p.campaignKey);
- if(!rank.demoIds.includes(p._id))throw Error("Only the top 10% of qualified prospects in this cohort may receive demos");
+ if(!rank.demoIds.includes(p._id))throw Error("Outside today's demo budget (DAILY_DEMO_CAPACITY) or below the score floor");
 }
 export const rankedCampaign=query({
  args:{trade:v.string(),city:v.string()},
@@ -35,7 +42,7 @@ export const rankedCampaign=query({
  handler:async(ctx,a)=>{
   const user=await owner(ctx);
   const rank=await ranked(ctx,user,cohort(a.trade,a.city));
-  return {total:rank.pool.length,qualified:rank.qualified.length,demoBudget:rank.demoIds.length,eligibleIds:rank.demoIds,eligible:rank.demoIds.map(id=>{const p=rank.pool.find(x=>x._id===id)!;return {id:p._id,name:p.name,score:p.score,stage:p.stage,website:p.website};}),topFraction:0.1};
+  return {total:rank.pool.length,qualified:rank.qualified.length,demoBudget:rank.demoIds.length,eligibleIds:rank.demoIds,eligible:rank.demoIds.map(id=>{const p=rank.pool.find(x=>x._id===id)!;return {id:p._id,name:p.name,score:p.score,stage:p.stage,website:p.website};}),dailyCapacity:Number(process.env.DAILY_DEMO_CAPACITY)||10};
  }
 });
 export const upsert=internalMutation({
@@ -71,13 +78,13 @@ export const discover=action({
   const trade=a.trade.trim(),city=a.city.trim();
   if(trade.length<3||trade.length>70||city.length<3||city.length>120)throw Error("Trade and city must be 3–120 characters");
   const key=process.env.FIRECRAWL_API_KEY;
-  if(!process.env.GOOGLE_MAPS_API_KEY&&(!key||!key.startsWith("fc-")))throw Error("Business search needs GOOGLE_MAPS_API_KEY or a Firecrawl key");
+  if(!(process.env.GOOGLE_MAPS_API_KEY&&paidSourceAllowed(process.env))&&(!key||!key.startsWith("fc-")))throw Error("Business search needs GOOGLE_MAPS_API_KEY or a Firecrawl key");
   return await discoveryCore(ctx,user,trade,city);
  }
 });
 export async function discoveryCore(ctx:ActionCtx,user:string,trade:string,city:string){
  // Real businesses from Google Places when a key is set; web search otherwise.
- if(process.env.GOOGLE_MAPS_API_KEY){await limiter.limit(ctx,"discovery",{key:user,throws:true});return await placesDiscovery(ctx,user,trade,city);}
+ if(process.env.GOOGLE_MAPS_API_KEY&&paidSourceAllowed(process.env)){await limiter.limit(ctx,"discovery",{key:user,throws:true});return await placesDiscovery(ctx,user,trade,city);}
  const key=process.env.FIRECRAWL_API_KEY;
  if(!key||!key.startsWith("fc-"))throw Error("Firecrawl API key not configured");
  await limiter.limit(ctx,"discovery",{key:user,throws:true});
@@ -154,8 +161,11 @@ export const draftAfterDemo=mutation({
   if(dncHit){await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"do_not_contact",summary:"Draft skipped: matches do-not-contact entry "+dncHit.value,timestamp:Date.now()});return {created:false};}
   const prior=await ctx.db.query("outreach").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).first();
   if(prior)return {created:false,id:prior._id};
-  const draft=composeOutreach({name:p.name,trade:p.trade,city:p.city,findings:p.scoreReasons||[]},{postalAddress:process.env.OUTREACH_POSTAL_ADDRESS});
+  const draft=await whyNowDraft(ctx,p);
   const id=await ctx.db.insert("outreach",{ownerId:user,prospectId:p._id,subject:draft.subject,body:draft.body,status:"draft",updatedAt:Date.now()});
+  await ctx.db.insert("sendSnapshots",{ownerId:user,prospectId:p._id,outreachId:id,...(p.gates?{gates:p.gates}:{}),...(p.lookalike!==undefined?{lookalike:p.lookalike}:{}),triggerType:p.triggerType??"none",...(p.triggerDate?{triggerDate:p.triggerDate}:{}),...(draft.triggerAgeDays!==undefined?{triggerAgeDays:draft.triggerAgeDays}:{}),demoVersion:"concept-v1",variant:draft.variant,subject:draft.subject,createdAt:Date.now()});
+  await logStageCost(ctx,{ownerId:user,stage:"Outreach",usd:0,computeSeconds:0,tool:"composeWhyNow",prospectId:p._id});
+  if(draft.alerts.length)await ctx.db.insert("activities",{ownerId:user,prospectId:p._id,kind:"alert",summary:draft.alerts.join("; "),timestamp:Date.now()});
   await ctx.db.insert("activities",{ownerId:user,prospectId:p._id,kind:"autodraft",summary:"Private demo completed; outreach draft created; zero emails sent"+(draft.issues.length?" — before sending: "+draft.issues.join("; "):""),timestamp:Date.now()});
   return {created:true,id};
  }
@@ -261,9 +271,24 @@ export const draftForService=internalMutation({
   if(dncHit){await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"do_not_contact",summary:"Draft skipped: matches do-not-contact entry "+dncHit.value,timestamp:Date.now()});return {created:false,suppressed:true,emailsSent:0};}
   const existing=await ctx.db.query("outreach").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).first();
   if(existing)return {created:false,emailsSent:0};
-  const content=composeOutreach({name:p.name,trade:p.trade,city:p.city,findings:p.scoreReasons||[]},{postalAddress:process.env.OUTREACH_POSTAL_ADDRESS});
+  const content=await whyNowDraft(ctx,p);
   await ctx.db.insert("outreach",{ownerId:p.ownerId,prospectId:p._id,subject:content.subject,body:content.body,status:"draft",updatedAt:Date.now()});
   await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"autodraft",summary:"Outreach draft prepared; not sent"+(content.issues.length?" — before sending: "+content.issues.join("; "):""),timestamp:Date.now()});
   return {created:true,emailsSent:0};
  }
 });
+
+/** v3 item 3: trigger-led "Found it. Fix it." draft with one-click opt-out token. Never sends. */
+export async function whyNowDraft(ctx:MutationCtx,p:Doc<"prospects">){
+ const token=crypto.randomUUID().replace(/-/g,"")+crypto.randomUUID().replace(/-/g,"").slice(0,8);
+ const base=(process.env.CONVEX_SITE_URL??"").replace(/\/$/,"");
+ const value=p.contact&&p.contact.includes("@")?p.contact:p.website;
+ if(value)await ctx.db.insert("optOutTokens",{ownerId:p.ownerId,prospectId:p._id,token,value,createdAt:Date.now()});
+ const srcs=await ctx.db.query("sources").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).take(5);
+ return composeWhyNow({name:p.name,trade:p.trade,city:p.city,
+  trigger:p.triggerType?{type:p.triggerType as TriggerType,date:p.triggerDate,source:p.triggerSource}:{type:"none"},
+  gap:(p.scoreReasons??[]).filter(r=>/^Gap:|^Opportunity:/.test(r)).map(r=>r.replace(/^Opportunity:\s*/,"")),
+  facts:srcs.filter(s=>s.url).slice(0,1).map(s=>({text:s.summary.split("\n")[0].slice(0,140),sourceUrl:s.url})),
+  optOutUrl:value&&base?base+"/optout/"+token:undefined,
+  postalAddress:process.env.OUTREACH_POSTAL_ADDRESS??POSTAL_ADDRESS});
+}
