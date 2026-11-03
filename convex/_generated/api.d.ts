@@ -22,6 +22,7 @@ import type * as demos from "../demos.js";
 import type * as email from "../email.js";
 import type * as followups from "../followups.js";
 import type * as geospatial from "../geospatial.js";
+import type * as headlessJobs from "../headlessJobs.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   followups: typeof followups;
   geospatial: typeof geospatial;
+  headlessJobs: typeof headlessJobs;
   health: typeof health;
   http: typeof http;
   identity: typeof identity;

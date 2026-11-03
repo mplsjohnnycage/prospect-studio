@@ -409,4 +409,47 @@ export const AGENT_TOOLS:Record<string,AgentTool>={
   args:{value:v.string(),reason:v.optional(v.string())},write:true,
   run:(ctx,ownerId,a)=>ctx.runMutation(internal.agentTools.doNotContact,{ownerId,...a}),
  }),
+
+ // Shared headless task contract. Only trusted backend code may independently verify.
+ queue_headless_job:defineTool({
+  title:"Queue headless job",description:"Durably queue structured prospect work for any authorized agent. No external effects on enqueue. Idempotency key prevents duplicates.",
+  args:{kind:v.union(v.literal("research_business"),v.literal("qualify_lead"),v.literal("build_demo"),v.literal("review_demo"),v.literal("draft_outreach")),instruction:v.string(),inputJson:v.string(),idempotencyKey:v.string()},write:true,
+  run:(ctx,ownerId,a)=>ctx.runMutation(internal.headlessJobs.enqueue,{ownerId,...a}),
+ }),
+ list_headless_jobs:defineTool({
+  title:"List headless jobs",description:"List durable job states without the browser UI.",
+  args:{limit:v.optional(v.number())},write:false,
+  run:(ctx,ownerId,a)=>ctx.runQuery(internal.headlessJobs.list,{ownerId,...a}),
+ }),
+ get_headless_job:defineTool({
+  title:"Get headless job",description:"Inspect a job, its evidence and its independent verification state.",
+  args:{jobId:v.string()},write:false,
+  run:(ctx,ownerId,a)=>ctx.runQuery(internal.headlessJobs.get,{ownerId,...a}),
+ }),
+ get_headless_job_events:defineTool({
+  title:"Headless job history",description:"Inspect auditable job transitions including claim, submit, retry and verification.",
+  args:{jobId:v.string(),limit:v.optional(v.number())},write:false,
+  run:(ctx,ownerId,a)=>ctx.runQuery(internal.headlessJobs.events,{ownerId,...a}),
+ }),
+ claim_headless_job:defineTool({
+  title:"Claim headless job",description:"Claim queued/expired job with a ten-minute fenced lease. Claiming never authorizes sending, publishing or spending.",
+  args:{workerId:v.string(),jobId:v.optional(v.string())},write:true,
+  run:(ctx,ownerId,a)=>ctx.runMutation(internal.headlessJobs.claim,{ownerId,...a,leaseId:crypto.randomUUID()}),
+ }),
+ renew_headless_job:defineTool({
+  title:"Renew headless lease",description:"Renew a valid job lease while working; bounded to twelve renewals.",
+  args:{jobId:v.string(),workerId:v.string(),leaseId:v.string()},write:true,
+  run:(ctx,ownerId,a)=>ctx.runMutation(internal.headlessJobs.heartbeat,{ownerId,...a}),
+ }),
+ submit_headless_job:defineTool({
+  title:"Submit headless job evidence",description:"Submit a summary and evidence using an active lease; submission is NOT verification or acceptance.",
+  args:{jobId:v.string(),workerId:v.string(),leaseId:v.string(),summary:v.string(),evidence:v.array(v.string())},write:true,
+  run:(ctx,ownerId,a)=>ctx.runMutation(internal.headlessJobs.submit,{ownerId,...a}),
+ }),
+ fail_headless_job:defineTool({
+  title:"Report headless job failure",description:"Report a failed attempt and queue a bounded retry if attempts remain.",
+  args:{jobId:v.string(),workerId:v.string(),leaseId:v.string(),reason:v.string()},write:true,
+  run:(ctx,ownerId,a)=>ctx.runMutation(internal.headlessJobs.fail,{ownerId,...a}),
+ }),
+
 };
