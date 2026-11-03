@@ -49,7 +49,7 @@ export function AgentLoopPanel(){
 
 /** Per-prospect trace: agent runs, activities (incl. call-script cards, opt-outs) and outcomes, plus one-step requests. */
 export function AgentTrace({prospectId}:{prospectId:string}){
- const rows=useQuery(api.agent.trace,{prospectId:prospectId as Id<"prospects">}) as {at:number;type:string;what:string;usd?:number}[]|undefined;
+ const rows=useQuery(api.agent.trace,{prospectId:prospectId as Id<"prospects">}) as {at:number;type:string;what:string;usd?:number;tier?:string;worker?:string}[]|undefined;
  const request=useMutation(api.agent.request);
  const ask=async(kind:"qualify"|"build"|"reach"|"recheck"|"reviews")=>{try{await request({kind,prospectId:prospectId as Id<"prospects">});toast.success(kind+" queued");}catch(e){toast.error(e instanceof Error?e.message:"Failed");}};
  const testLeadM=useMutation(api.agent.sendTestLead);
@@ -60,7 +60,7 @@ export function AgentTrace({prospectId}:{prospectId:string}){
   <div className="flex flex-wrap gap-1">{(["recheck","reviews","build","reach"] as const).map(k=><Button key={k} size="sm" variant="outline" className="h-7 text-[11px]" onClick={()=>ask(k)}>Agent: {k=="reach"?"draft":k}</Button>)}<Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={()=>testLeadM({prospectId:prospectId as Id<"prospects">}).then(()=>toast.success("Test lead logged (labeled TEST, nothing sent)"),e=>toast.error(String(e)))}>Demo test lead</Button></div>
   {look&&<p className="text-[11px]"><b>Fit {look.fit??"n/a"}</b> · lookalike {look.lookalike??"n/a"} <span className="text-muted-foreground">({look.source==="embedding"?"EmbeddingGemma":look.source==="gates"?"gate-based fallback":"none yet"}) · {look.detail}</span></p>}
   {[card,dna,td,ptl].filter(Boolean).map((x,i)=><pre key={i} className="whitespace-pre-wrap rounded bg-muted p-2 text-[11px]">{x}</pre>)}
-  <ul className="max-h-32 overflow-auto text-[11px] text-muted-foreground">{(rows??[]).slice(-12).map((r,i)=><li key={i}>{new Date(r.at).toLocaleString()} · {r.type} · {r.what.slice(0,120)}</li>)}</ul>
+  <ul className="max-h-32 overflow-auto text-[11px] text-muted-foreground">{(rows??[]).slice(-12).map((r,i)=><li key={i}>{new Date(r.at).toLocaleString()} · {r.type}{r.tier?<> · <span className="rounded bg-muted px-1 font-mono" title={r.worker??""}>{r.tier}</span></>:null} · {r.what.slice(0,120)}</li>)}</ul>
  </div>;
 }
 

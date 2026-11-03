@@ -276,7 +276,7 @@ export const trace=query({args:{prospectId:v.id("prospects")},returns:v.any(),ha
  const runs=await ctx.db.query("agentRuns").withIndex("by_prospect",q=>q.eq("prospectId",a.prospectId)).take(200);
  const acts=await ctx.db.query("activities").withIndex("by_prospect",q=>q.eq("prospectId",a.prospectId)).take(200);
  const outs=await ctx.db.query("outcomes").withIndex("by_prospect",q=>q.eq("prospectId",a.prospectId)).take(200);
- return [...runs.map(r=>({at:r.startedAt,type:"run",what:r.kind+" "+r.status+(r.error?": "+r.error:""),usd:r.usd})),...acts.map(x=>({at:x.timestamp,type:"activity",what:x.kind+": "+x.summary})),...outs.map(o=>({at:o.at,type:"outcome",what:o.kind}))].sort((x,y)=>x.at-y.at);
+ return [...runs.map(r=>({at:r.startedAt,type:"run",what:r.kind+" "+r.status+(r.error?": "+r.error:""),usd:r.usd,tier:r.tier,worker:r.worker})),...acts.map(x=>({at:x.timestamp,type:"activity",what:x.kind+": "+x.summary})),...outs.map(o=>({at:o.at,type:"outcome",what:o.kind}))].sort((x,y)=>x.at-y.at);
 }});
 export const digests=query({args:{},returns:v.any(),handler:async ctx=>{const user=await owner(ctx);return await ctx.db.query("agentDigests").withIndex("by_owner_time",q=>q.eq("ownerId",user)).order("desc").take(14);}});
 
