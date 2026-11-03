@@ -3,7 +3,7 @@
 // Free public sources only: Minneapolis CCS_Permits + St. Paul Building_Permits_ (ArcGIS open data) and OSM Overpass.
 // St. Paul's feed stopped updating 2025-06-30, so it uses --stp-days (default 560) and its triggers score as stale.
 // MN SOS bulk data is a mailed/emailed request form (no public download), so it is imported with --sos-file <csv> once received.
-// Writes .data/raw.sqlite and .data/promote.json. Never touches Convex or sends anything.
+// Writes .data/raw.sqlite and .data/promote.json (array of api.pipeline.promote records; push in batches of 200 via the app or `npx convex run pipeline:promoteInternal` on DEV only). Never touches Convex or sends anything.
 import {DatabaseSync} from "node:sqlite";
 import {mkdirSync,writeFileSync,readFileSync} from "node:fs";
 import {osmToRecord,overpassQuery,dedupeRecords,siteHealth,fiveGates,shouldPromote,permitQueryUrl,permitsToContractors,openDataToRecord,PERMIT_FEEDS,DAY,type RawRecord,type SiteProbe} from "../src/lib/revenue-engine";
@@ -68,7 +68,7 @@ async function main(){
   const g=fiveGates({trade:r.trade??"",site,triggers:r.trigger?[r.trigger]:[]});
   gs.run(r.identityKey,JSON.stringify(g.gates),g.tier,g.total,JSON.stringify(g.trigger),g.passed?1:0,Date.now());
   const d=shouldPromote(r,g,existing);
-  if(d.promote)promote.push({record:r,gates:g});
+  if(d.promote)promote.push({recordId:r.id,identityKey:r.identityKey,source:r.source,sourceUrl:r.sourceUrl,fetchedAt:r.fetchedAt,name:r.name,city:r.city,...(r.trade?{trade:r.trade}:{}),...(r.phone?{phone:r.phone}:{}),...(r.website?{website:r.website}:{}),gates:g.gates,tier:g.tier,total:g.total,reasons:g.reasons,triggerType:g.trigger.type,...(g.trigger.date?{triggerDate:g.trigger.date}:{}),...(g.trigger.source?{triggerSource:g.trigger.source}:{})});
  }
  writeFileSync(".data/promote.json",JSON.stringify(promote,null,1));
  const total=(db.prepare("SELECT count(*) n FROM raw_records").get() as {n:number}).n;
