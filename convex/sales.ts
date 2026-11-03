@@ -17,6 +17,8 @@ import {outreachFooter,outreachIssues} from "../src/lib/prospect-signals";
 import {addDemoLink,buildReplyPrompt,fallbackReply,firstEmail,isOptOut,REPLY_SYSTEM_PROMPT,senderEmail,stripQuoted} from "../src/lib/sales";
 import {generateText,modelList,withModelFallback} from "../src/lib/gemini";
 import {cancelOpenFollowUps} from "./followups";
+import {markSent as markSentOutcome,logOutcome} from "./outcomes";
+import {classifyReply} from "../src/lib/revenue-engine";
 
 const limiter=new RateLimiter(components.rateLimiter,{outreachSend:{kind:"fixed window",rate:40,period:24*HOUR}});
 const inbox=()=>process.env.AGENTMAIL_INBOX_ID||"johnnyc@agentmail.to";
@@ -130,6 +132,7 @@ export const markSent=internalMutation({
   await ctx.db.patch(m._id,{status:"sent",deliveryStatus:"sent",outboundId:a.messageId,threadId:a.threadId,sentAt:now,updatedAt:now});
   const p=await ctx.db.get(m.prospectId);
   if(p&&!["Convert","Produce"].includes(p.stage))await ctx.db.patch(p._id,{stage:"Outreach",status:"running",updatedAt:now});
+  await markSentOutcome(ctx,m.ownerId,m._id,m.prospectId);
   await ctx.db.insert("activities",{ownerId:m.ownerId,prospectId:m.prospectId,kind:"email_sent",summary:"Email sent to "+(m.recipient??"")+" from "+inbox(),timestamp:now});
  }
 });
@@ -193,6 +196,9 @@ export const ingestReply=internalMutation({
   const optOut=isOptOut(a.text),now=Date.now();
   await cancelOpenFollowUps(ctx,p._id,"They replied");
   const replyId=await ctx.db.insert("replies",{ownerId:o.ownerId,prospectId:p._id,outreachId:o._id,messageId:a.messageId,threadId:a.threadId,from:a.from.slice(0,300),subject:a.subject.slice(0,300),text:a.text,optOut,receivedAt:a.receivedAt});
+  const intent=classifyReply(a.text);
+  await logOutcome(ctx,{ownerId:o.ownerId,prospectId:p._id,kind:optOut?"lost":"replied",intent:intent.intent,...(optOut?{reason:"opt_out_reply"}:{})});
+  await ctx.db.insert("activities",{ownerId:o.ownerId,prospectId:p._id,kind:"reply_routed",summary:"Reply intent "+intent.intent+" -> "+intent.route,timestamp:now});
   if(optOut){
    const email=normalizeSuppression(senderEmail(a.from));
    if(email&&!(await ctx.db.query("suppressions").withIndex("by_owner_value",q=>q.eq("ownerId",o.ownerId).eq("value",email.value)).first()))
