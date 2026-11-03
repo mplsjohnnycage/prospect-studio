@@ -7,7 +7,7 @@ import {RateLimiter,HOUR} from "@convex-dev/rate-limiter";
 import {owner} from "./identity";
 import {directions} from "../src/lib/domain";
 import {candidateFromSearch,qualifyBusiness} from "../src/lib/prospect-intelligence";
-import {selectDemoBudget,composeWhyNow,paidSourceAllowed,POSTAL_ADDRESS,type TriggerType,type GateResult} from "../src/lib/revenue-engine";
+import {demoQa,recheck,siteHealth,selectDemoBudget,composeWhyNow,paidSourceAllowed,POSTAL_ADDRESS,type TriggerType,type GateResult} from "../src/lib/revenue-engine";
 import {logStageCost} from "./outcomes";
 import {loadSuppressions} from "./suppressions";
 import {isSuppressed} from "../src/lib/suppression";
@@ -156,7 +156,17 @@ export const draftAfterDemo=mutation({
   if(!p||p.ownerId!==user)throw Error("Prospect not found");
   await requireTopDecile(ctx,p);
   const concepts=await ctx.db.query("concepts").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).take(20);
-  if(!concepts.some(c=>c.status==="approved"&&!!c.html))throw Error("Verified demo required before drafting");
+  const built=concepts.find(c=>c.status==="approved"&&!!c.html);
+  if(!built)throw Error("Verified demo required before drafting");
+  // v3 item 9: hard gates. A demo without a DEMO label, noindex, or with unsourced claims can't go out.
+  const qa=demoQa(built.html!);const hard=qa.failures.filter(f=>f!=="No working CTA"&&f!=="No sourced fact rendered");
+  if(hard.length){await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"alert",summary:"Demo QA failed: "+hard.join("; ")+". Draft held.",timestamp:Date.now()});return {created:false};}
+  // v3 item 15: stale trigger -> re-rank instead of drafting a "why now" that is no longer now.
+  if(p.triggerType&&p.triggerType!=="none"){
+   const t={type:p.triggerType as TriggerType,date:p.triggerDate,source:p.triggerSource};
+   const unk=siteHealth({unknown:true});
+   if(recheck({site:unk,trigger:t},{site:unk,trigger:t})==="rerank")await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"alert",summary:"Trigger "+p.triggerType+" is older than 14 days; draft opens without it being fresh. Consider re-ranking.",timestamp:Date.now()});
+  }
   const dncHit=isSuppressed({contact:p.contact,website:p.website},await loadSuppressions(ctx,p.ownerId));
   if(dncHit){await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"do_not_contact",summary:"Draft skipped: matches do-not-contact entry "+dncHit.value,timestamp:Date.now()});return {created:false};}
   const prior=await ctx.db.query("outreach").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).first();
