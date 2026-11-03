@@ -30,6 +30,7 @@ import type * as mcp from "../mcp.js";
 import type * as outreach from "../outreach.js";
 import type * as outcomes from "../outcomes.js";
 import type * as pipeline from "../pipeline.js";
+import type * as production from "../production.js";
 import type * as places from "../places.js";
 import type * as pricing from "../pricing.js";
 import type * as prospects from "../prospects.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   mcp: typeof mcp;
   outcomes: typeof outcomes;
   pipeline: typeof pipeline;
+  production: typeof production;
   outreach: typeof outreach;
   places: typeof places;
   pricing: typeof pricing;
