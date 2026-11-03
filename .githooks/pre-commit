@@ -1,0 +1,3 @@
+#!/bin/sh
+# Backend/frontend sync + tests before every commit. Enable: git config core.hooksPath .githooks
+npm run verify

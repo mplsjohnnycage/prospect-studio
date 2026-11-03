@@ -1,4 +1,5 @@
 "use client";
+import {AgentTrace} from "@/components/agent-loop-panel";
 import {useEffect,useState} from "react";
 import {ArrowRight,ArrowUpRight,CalendarPlus,ChevronRight,ExternalLink,FileText,Globe2,LoaderCircle,Pause,Play,ShieldCheck,Sparkles,X} from "lucide-react";
 import {Button} from "@/components/ui/button";
@@ -25,7 +26,7 @@ export function ProspectInspector({detail,close,run,busy,refresh,onStudio,onCale
  const profile=useBusinessProfile(p,detail.sources??[]);
  const initials=p.name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
  const tabs:[typeof tab,string][]=[["overview","Overview"],["brand","Brand DNA"],["research",detail.sources?.length?"Research · "+detail.sources.length:"Research"],["outreach",detail.replies?.length?"Outreach · "+detail.replies.length:"Outreach"]];
- return <div className="flex h-full min-h-0 flex-col">
+ return <div className="flex h-full min-h-0 flex-col"><AgentTrace prospectId={detail.prospect.id}/>
  <div className="flex-1 overflow-y-auto">
  <div className="relative h-[150px] overflow-hidden border-b border-border bg-gradient-to-br from-[#d8efe5] via-[#e8f1ed] to-[#c9e0d7] dark:from-[#183c34] dark:via-[#24413b] dark:to-[#142f2c]">
   {built?.html?<iframe title="Latest concept preview" tabIndex={-1} sandbox="" srcDoc={built.html} className="pointer-events-none absolute left-0 top-0 h-[420px] w-[760px] origin-top-left scale-[.58] border-0 bg-background"/>:<><div className="absolute -right-12 -top-20 size-72 rounded-full border-[36px] border-white/20"/><div className="absolute bottom-[-85px] left-[-55px] size-52 rounded-full border-[28px] border-white/20"/></>}
