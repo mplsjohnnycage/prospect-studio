@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run verify && next build --webpack",
+    "build": "npm run verify && next build --webpack && node scripts/check-built-styles.mjs",
     "start": "next start",
     "lint": "eslint",
     "test:unit": "node --import tsx --test src/lib/*.test.ts",
@@ -63,6 +63,7 @@
     "@edge-runtime/vm": "^5.0.0",
     "@google/stitch": "^0.12.1",
     "@rivetkit/cli": "^2.3.31",
+    "@tailwindcss/postcss": "^4.3.4",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24.19.2",
     "@types/react": "^19",
