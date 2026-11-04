@@ -58,13 +58,14 @@ export const upsert=internalMutation({
   const stamp=Date.now();
   const changes={name:c.name.slice(0,160),website:c.website,trade:c.trade.slice(0,120),city:c.city.slice(0,160),score:c.score,qualified:c.qualified,...(c.opportunity!==undefined?{opportunity:Math.max(0,Math.min(100,c.opportunity))}:{}),scoreReasons:c.reasons.slice(0,14),evidence:c.evidence.slice(0,5),updatedAt:stamp};
   if(existing){
+   if(c.qualified&&!existing.qualifiedAt)await ctx.db.patch(existing._id,{qualifiedAt:stamp});
    if(existing.status!=="paused"&&existing.status!=="blocked"&&!["Demo","Outreach","Convert","Produce"].includes(existing.stage)){
     await ctx.db.patch(existing._id,{...changes,...(!existing.contact&&c.contact?{contact:c.contact.slice(0,250)}:{})});
    }
    return existing._id;
   }
   const suppressedHit=isSuppressed({contact:c.contact,website:c.website},await loadSuppressions(ctx,a.ownerId));
-  const id=await ctx.db.insert("prospects",{...changes,ownerId:a.ownerId,campaignKey:a.campaignKey,contact:(c.contact??"").slice(0,250),notes:"Source: "+c.url+"\n"+c.reasons.join("; ")+(suppressedHit?"\nOn the do-not-contact list ("+suppressedHit.value+")":""),stage:"Qualify",status:suppressedHit?"blocked":(c.qualified?"queued":"needs_approval"),source:"firecrawl-search"});
+  const id=await ctx.db.insert("prospects",{...changes,ownerId:a.ownerId,campaignKey:a.campaignKey,contact:(c.contact??"").slice(0,250),notes:"Source: "+c.url+"\n"+c.reasons.join("; ")+(suppressedHit?"\nOn the do-not-contact list ("+suppressedHit.value+")":""),stage:"Qualify",status:suppressedHit?"blocked":(c.qualified?"queued":"needs_approval"),source:"firecrawl-search",...(c.qualified?{qualifiedAt:stamp}:{})});
   await ctx.db.insert("sources",{ownerId:a.ownerId,prospectId:id,url:c.url,summary:(c.description+"\n"+c.markdown).slice(0,12000),checksum:"",verifiedAt:stamp});
   await ctx.db.insert("activities",{ownerId:a.ownerId,prospectId:id,kind:"discovered",summary:"Public web search indexed and qualified: score "+c.score+"; "+(c.qualified?"passed":"review"),timestamp:stamp});
   return id;
