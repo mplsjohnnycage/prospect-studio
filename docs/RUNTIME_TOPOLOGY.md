@@ -16,7 +16,9 @@ The Fly Sprite `prospect-studio` is an execution environment and the operator bo
 
 ## Versions
 
-`rivetkit` 3.0.1, `@rivet-dev/agentos` 0.4.6, `@rivet-dev/agentos-core` 0.4.7, `sandbox-agent` 0.5.5. The Rivet spike (desktop `prospect-rivet-spike/RESULTS.md`) proved agentOS library mode, network deny/allowlist, no secrets inside the VM and gapless streaming on rivetkit 3.0.0.
+`rivetkit` 2.3.31 with `@rivetkit/next-js` 2.3.31, and `@rivet-dev/agentos-core` 0.4.7 for VMs inside actors. Stay on rivetkit 2.3.x for now: **rivetkit 3.0.x disables serverless mode** (`registry.handler`, `serve()` and `configurePool` throw "serverless is disabled in this version"), so actors cannot run on Vercel with it. `@rivet-dev/agentos` (the actor package) pins rivetkit 3.0.0 and is not used. The desktop Rivet spike's agentOS results (library mode, deny-by-default network, no secrets in the VM) come from `agentos-core`, which has no rivetkit dependency.
+
+Verified 2026-11-03: `registry.handler` against the Rivet Cloud test namespace returns metadata 200 (3 actors, serverless), health 200, and rejects `/start` without Rivet's pool headers (400).
 
 ## Environment variables
 
@@ -42,7 +44,7 @@ The Fly Sprite `prospect-studio` is an execution environment and the operator bo
 Execution smoke test (prints the result, never a token): `EXECUTION_PROVIDER=pc node --import tsx scripts/exec-smoke.mts`. Verified 2026-11-03 on `vercel` (2.2 s) and `pc` (0.3 s).
 
 ```sh
-# Actor route is off until RIVET_ENDPOINT is set (expect 503)
+# Actor route is off until RIVET_ENDPOINT is set (expect 503); handler check: scripts/rivet-handler-smoke.mts
 curl -s -o /dev/null -w '%{http_code}\n' https://prospect-studio-johnnyc.vercel.app/api/rivet/metadata
 # OmniRoute from any tailnet node (expect 401 without a key)
 curl -s -o /dev/null -w '%{http_code}\n' http://desktop-3apdbkg.taildf3a4b.ts.net:20128/v1/models
