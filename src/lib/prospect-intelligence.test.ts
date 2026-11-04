@@ -32,3 +32,11 @@ test("qualification is evidence-based and generates an unsent contextual draft",
  assert.match(draft.body,/North Star Painting/);
  assert.doesNotMatch(draft.body,/we audited your site and found|guaranteed/i);
 });
+test("generic search labels do not hide a distinctive company name in sourced homepage evidence",()=>{
+ const p=candidateFromSearch({url:"https://okeefepainting.example/",title:"House Painters | Interior and Exterior Painting",description:"Professional painting services in Minneapolis",markdown:"# O'Keefe Painting\n\n## Services\nO'Keefe Painting provides interior and exterior painting services in Minneapolis."},"Painting","Minneapolis");
+ assert.equal(p?.name,"O'Keefe Painting");
+});
+test("distinctive search titles override generic website headings",()=>{
+ const p=candidateFromSearch({url:"https://northstar.example/",title:"North Star Painting | Minneapolis",markdown:"# House Painters\nContact us for professional service"},"Painting","Minneapolis");
+ assert.equal(p?.name,"North Star Painting");
+});
