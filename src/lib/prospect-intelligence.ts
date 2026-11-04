@@ -4,6 +4,19 @@ export type DiscoveredBusiness={name:string;website:string;trade:string;city:str
 export type ScoredBusiness={score:number;qualified:boolean;reasons:string[];evidence:string[]};
 const directoryDomains=new Set(["yelp.com","angi.com","angieslist.com","thumbtack.com","homeadvisor.com","bbb.org","yellowpages.com","facebook.com","instagram.com","linkedin.com","nextdoor.com","google.com","mapquest.com","houzz.com","indeed.com","reddit.com","tiktok.com","pinterest.com","youtube.com"]);
 const genericTitle=/^(top\s+\d+|best\s+\d+|list of|directory|reviews? of|jobs? at|near me|find the best|compare|ranked)/i;
+// Search result titles are often generic SEO copy. A business's first distinctive
+// markdown heading is better evidence, but only when the search title is generic.
+const genericBusinessName=/^(?:house painters?|painting contractors?|painters? near me|roofers?|roofing contractors?|plumbers?|hvac contractors?|electricians?|landscapers?|cleaning services?|contact us|services|home|homepage)$/i;
+function evidencedName(markdown:string):string|undefined {
+ for(const line of markdown.split(/\r?\n/).slice(0,90)) {
+  const heading=line.match(/^#{1,2}\s+(.{3,130}?)\s*#*\s*$/);
+  if(!heading)continue;
+  const name=heading[1].replace(/\s+[|–—]\s+.*$/u,"").trim();
+  if(name.length>=3&&name.length<=130&&!genericBusinessName.test(name)&&!genericTitle.test(name)&&!/[!?]/.test(name))return name;
+ }
+ return undefined;
+}
+
 export function candidateFromSearch(hit:SearchHit,trade:string,city:string):DiscoveredBusiness|null {
  try {
   const u=new URL(hit.url);
@@ -14,7 +27,8 @@ export function candidateFromSearch(hit:SearchHit,trade:string,city:string):Disc
   if(/\.(?:pdf|jpg|png|docx|zip)$/i.test(u.pathname))return null;
   const title=(hit.title||"").replace(/\s+/g," ").trim();
   const desc=(hit.description||"").slice(0,1000).trim();
-  const name=title.split(/\s[|–—]\s/)[0].replace(/\s+-\s+(home|homepage|services)$/i,"").trim();
+  const searchName=title.split(/\s[|–—]\s/)[0].replace(/\s+-\s+(home|homepage|services)$/i,"").trim();
+  const name=genericBusinessName.test(searchName)?(evidencedName(hit.markdown||"")??searchName):searchName;
   if(name.length<3||name.length>130||genericTitle.test(name)||/^(home|homepage|about us|contact us)$/i.test(name))return null;
   return {name,website:u.origin+"/",trade:trade.slice(0,90),city:city.slice(0,160),description:desc,markdown:(hit.markdown||"").slice(0,8000),url:hit.url};
  }catch{return null;}
