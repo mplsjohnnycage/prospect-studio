@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: false,
+  // RivetKit and agentOS load native runtimes through dynamic imports; bundling them breaks at request time.
+  serverExternalPackages: ["rivetkit", "@rivet-dev/agentos-core", "sandbox-agent", "@fly/sprites"],
   // One canonical origin. The project's default Vercel domain
   // (prospect-studio-kappa.vercel.app) serves the same app, but OAuth state
   // cookies are scoped to the origin the flow starts on, so a sign-in started
