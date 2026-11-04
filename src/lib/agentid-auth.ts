@@ -50,13 +50,23 @@ export function isAgentMailIdentity(email: string): boolean {
 
 /** Provider identity, not a display name, is part of the owner authorization boundary. */
 export function isOwnerAccount(
-  user: { email?: string | null } | null | undefined,
+  user: { email?: string | null; emailVerified?: boolean | null } | null | undefined,
   accountProviderIds: readonly string[],
   ownerEmail: string,
+  extraSocialOwnerEmails: readonly string[] = [],
 ): boolean {
-  return Boolean(
-    user &&
-    user.email?.trim().toLowerCase() === ownerEmail.trim().toLowerCase() &&
-    accountProviderIds.some((providerId) => providerId === "credential" || providerId === "google"),
-  );
+  if (!user?.email) return false;
+  const email = user.email.trim().toLowerCase();
+  const primaryOwnerEmail = ownerEmail.trim().toLowerCase();
+  if (!email || !primaryOwnerEmail) return false;
+
+  // A password account may only own the primary activated owner identity.
+  if (email === primaryOwnerEmail && accountProviderIds.includes("credential")) return true;
+
+  // Google accounts are separate identities, so require verified email,
+  // provider provenance, and an *exact* allowlisted address. Domain-wide
+  // matches and AgentID identities can never grant workspace ownership.
+  return user.emailVerified === true
+    && accountProviderIds.includes("google")
+    && [primaryOwnerEmail, ...extraSocialOwnerEmails.map((address) => address.trim().toLowerCase())].includes(email);
 }

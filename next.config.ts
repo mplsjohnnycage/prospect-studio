@@ -3,16 +3,24 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: false,
-  // One canonical origin. The project's default Vercel domain
-  // (prospect-studio-kappa.vercel.app) serves the same app, but OAuth state
-  // cookies are scoped to the origin the flow starts on, so a sign-in started
-  // on kappa dies at the canonical callback with state_mismatch. Bounce every
-  // kappa hit to the canonical domain so auth only ever runs on one origin.
+  // One canonical origin. OAuth state cookies are host-only, and Google and
+  // AgentID callbacks target prospect-studio-johnnyc.vercel.app. Starting
+  // login on an alternate public host splits those cookies and the callback
+  // dies with state_mismatch. Bounce every alternate host to the canonical
+  // domain before any auth request, preserving path and query.
+  // The kappa rule stays permanent (308), matching main's 2f1b449. The git-main
+  // host is the same class of public alias, so it uses the same permanence.
   async redirects() {
     return [
       {
         source: "/:path*",
         has: [{ type: "host", value: "prospect-studio-kappa.vercel.app" }],
+        destination: "https://prospect-studio-johnnyc.vercel.app/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "prospect-studio-git-main-johnnyc.vercel.app" }],
         destination: "https://prospect-studio-johnnyc.vercel.app/:path*",
         permanent: true,
       },
