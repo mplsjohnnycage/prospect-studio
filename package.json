@@ -61,6 +61,8 @@
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
+    "@emnapi/core": "1.11.3",
+    "@emnapi/runtime": "1.11.3",
     "@google/stitch": "^0.12.1",
     "@rivetkit/cli": "^2.3.31",
     "@tailwindcss/postcss": "4.3.3",
