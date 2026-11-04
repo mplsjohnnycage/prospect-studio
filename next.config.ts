@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   // RivetKit and agentOS load native runtimes through dynamic imports; bundling them breaks at request time.
   serverExternalPackages: ["rivetkit", "@rivetkit/rivetkit-napi", "@rivet-dev/agentos-core", "sandbox-agent", "@fly/sprites"],
+  // rivetkit loads its native runtime through an optional dynamic import that
+  // file tracing cannot follow, so the napi packages never reach the function
+  // bundle on their own ("Cannot find package '@rivetkit/rivetkit-napi'").
+  // Force them into the rivet route's function files explicitly.
+  outputFileTracingIncludes: {
+    "/api/rivet/[...all]": [
+      "./node_modules/@rivetkit/rivetkit-napi/**/*",
+      "./node_modules/@rivetkit/rivetkit-napi-linux-x64-gnu/**/*",
+    ],
+  },
   // One canonical origin. The project's default Vercel domain
   // (prospect-studio-kappa.vercel.app) serves the same app, but OAuth state
   // cookies are scoped to the origin the flow starts on, so a sign-in started
