@@ -4,7 +4,11 @@
 #
 # Before the first start, create the runner pool "pc-node" (kind: normal) in the Rivet
 # dashboard for the production namespace, then put the namespace secret endpoint in
-# ./pc-node.env as RIVET_ENDPOINT=https://<namespace>:<sk_token>@api.rivet.dev
+# ./pc-node.env as RIVET_ENDPOINT=https://<namespace>:<sk_token>@api-<dc>.rivet.dev
+# The host MUST be the regional host (e.g. api-us-west-1.rivet.dev for Oregon):
+# the global api.rivet.dev rejects runner WebSocket connections with
+# guard.must_use_regional_host, so the runner never registers capacity and every
+# actor on this pool fails with no_capacity. REST calls work on either host.
 #
 #   docker compose -f deploy/pc-node/compose.yaml up -d
 name: prospect-pc-node
@@ -18,6 +22,7 @@ services:
     env_file: [./pc-node.env]
     environment:
       RIVET_RUNNER: pc-node
+      RIVET_POOL: pc-node
       NODE_ENV: production
       OMNIROUTE_BASE_URL: http://host.docker.internal:20128
       SANDBOX_AGENT_PC_URL: http://host.docker.internal:2468
