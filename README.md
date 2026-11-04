@@ -26,3 +26,8 @@ node --import tsx --test src/lib/*.test.ts
 
 ## API
 `GET /api/health`; `GET/POST /api/prospects`; `GET/POST /api/prospects/:id`; `GET /api/activity`; `GET /api/actor-status`; `GET /api/providers`; `GET /api/mail`; `POST /api/research`; `GET /api/geo?lat=45&lon=-93&km=20`.
+
+## Sandbox agent options
+Docker Sandboxes (sbx) provider with seven agent options: claude-code, codex, opencode, pi, grok, cursor-sdk, cli. Registry: src/lib/sandbox/agent-options.ts; provider + Tier 2 rules: src/lib/sandbox/sandbox-provider.json. grok and cursor-sdk unverified.
+
+Build path (rev 3, 2026-11-03): all seven agent options build via the Rivet sandbox-agent SDK with the custom docker-cloud provider (src/lib/sandbox/docker-cloud-provider.ts) into Docker hosted cloud sandboxes (Docker Agentic Platform). Not sbx. The desktop local network-less Docker is ONLY for Tier 2 untrusted non-agent code.
