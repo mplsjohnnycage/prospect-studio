@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {availableProviders,endpointFor,pickProvider} from "./execution";
+import {availableProviders,endpointFor,pickProvider,spriteFor} from "./execution";
 import {demoModelList,omniChatUrl,omniFromEnv} from "./llm";
 import {rivetRouteEnabled} from "./rivet-route";
 
@@ -14,12 +14,19 @@ test("execution provider defaults to vercel and ignores unknown values", () => {
 test("always-on sandbox endpoints need both a URL and a token", () => {
   assert.equal(endpointFor("pc", {SANDBOX_AGENT_PC_URL: "http://100.94.150.48:2468"}), null);
   assert.deepEqual(endpointFor("pc", {SANDBOX_AGENT_PC_URL: "http://100.94.150.48:2468/", SANDBOX_AGENT_PC_TOKEN: "t"}), {baseUrl: "http://100.94.150.48:2468", token: "t"});
-  assert.throws(() => endpointFor("sprite", {SANDBOX_AGENT_SPRITE_URL: "file:///etc", SANDBOX_AGENT_SPRITE_TOKEN: "t"}));
+  assert.throws(() => endpointFor("pc", {SANDBOX_AGENT_PC_URL: "file:///etc", SANDBOX_AGENT_PC_TOKEN: "t"}));
+});
+
+test("sprite execution needs a Sprites token and a valid Sprite name", () => {
+  assert.equal(spriteFor({}), null);
+  assert.deepEqual(spriteFor({SPRITES_TOKEN: "t"}), {token: "t", name: "prospect-studio"});
+  assert.throws(() => spriteFor({SPRITES_TOKEN: "t", SPRITE_EXEC_NAME: "../x"}));
 });
 
 test("available providers follow what this runtime can reach", () => {
   assert.deepEqual(availableProviders({}), []);
   assert.deepEqual(availableProviders({VERCEL: "1", SANDBOX_AGENT_PC_URL: "http://h:2468", SANDBOX_AGENT_PC_TOKEN: "t"}), ["vercel", "pc"]);
+  assert.deepEqual(availableProviders({SPRITES_TOKEN: "t"}), ["sprite"]);
 });
 
 test("OmniRoute is opt-in and goes first when configured", () => {
