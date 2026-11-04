@@ -9,6 +9,7 @@
  */
 
 import type * as actorEvents from "../actorEvents.js";
+import type * as agent from "../agent.js";
 import type * as agentTools from "../agentTools.js";
 import type * as alerts from "../alerts.js";
 import type * as assistant from "../assistant.js";
@@ -18,6 +19,7 @@ import type * as autopilotService from "../autopilotService.js";
 import type * as bookings from "../bookings.js";
 import type * as calendar from "../calendar.js";
 import type * as crons from "../crons.js";
+import type * as demoIr from "../demoIr.js";
 import type * as demoSubmissions from "../demoSubmissions.js";
 import type * as demos from "../demos.js";
 import type * as email from "../email.js";
@@ -38,6 +40,7 @@ import type * as prospects from "../prospects.js";
 import type * as research from "../research.js";
 import type * as sales from "../sales.js";
 import type * as suppressions from "../suppressions.js";
+import type * as validators from "../validators.js";
 
 import type {
   ApiFromModules,
@@ -47,6 +50,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   actorEvents: typeof actorEvents;
+  agent: typeof agent;
   agentTools: typeof agentTools;
   alerts: typeof alerts;
   assistant: typeof assistant;
@@ -56,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   bookings: typeof bookings;
   calendar: typeof calendar;
   crons: typeof crons;
+  demoIr: typeof demoIr;
   demoSubmissions: typeof demoSubmissions;
   demos: typeof demos;
   email: typeof email;
@@ -76,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   research: typeof research;
   sales: typeof sales;
   suppressions: typeof suppressions;
+  validators: typeof validators;
 }>;
 
 /**

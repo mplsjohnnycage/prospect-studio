@@ -295,6 +295,25 @@ async function safe<T>(fn:()=>Promise<T>):Promise<T>{
 const prospectId=v.string();
 
 export const AGENT_TOOLS:Record<string,AgentTool>={
+ agent_status:defineTool({
+  title:"Agent loop status",
+  description:"Kill switch, autonomy level per stage, daily caps and usage, and queued tasks for the autonomous prospect loop. The loop never sends email or sets prices.",
+  args:{},write:false,
+  run:async(ctx,ownerId)=>ctx.runQuery(internal.agent.statusFor,{ownerId}),
+ }),
+ agent_request_step:defineTool({
+  title:"Request an agent step",
+  description:"Queue one loop step (qualify, build, reach, recheck) for a prospect. It runs only when the loop is enabled and the stage's level and daily caps allow it. Reach creates a draft for Johnny's approval; nothing is sent.",
+  args:{kind:v.union(v.literal("qualify"),v.literal("build"),v.literal("reach"),v.literal("recheck")),prospectId},write:true,
+  run:async(ctx,ownerId,a)=>safe(async()=>({taskId:await ctx.runMutation(internal.agent.enqueueInternal,{ownerId,kind:a.kind,prospectId:a.prospectId as never,rerun:true})})),
+ }),
+ promote_records:defineTool({
+  title:"Promote sourced records",
+  description:"Typed ingest: add up to 200 gate-scored, source-linked business records. Rejects records without a source link, dedupes on identity key and blocks do-not-contact matches.",
+  args:{records:v.array(v.any())},write:true,
+  run:async(ctx,ownerId,a)=>safe(async()=>ctx.runMutation(internal.pipeline.promoteInternal,{ownerId,records:a.records as never})),
+ }),
+
  pipeline_summary:defineTool({
   title:"Pipeline summary",
   description:"Overview of the sales pipeline: prospects per stage, top leads, hot leads who opened their demo in the last 3 days (call them first), call requests from demo pages, emails waiting for Johnny's approval, replies waiting for an answer, and won deals. Start here when asked how things are going or what to do next.",

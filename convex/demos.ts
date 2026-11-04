@@ -15,6 +15,9 @@ import {GeminiHttpError,withModelFallback} from "../src/lib/gemini";
 import {demoModelList,generateAny} from "../src/lib/llm";
 import {logOutcome} from "./outcomes";
 import {pickPreset,presetBrief} from "../src/lib/design-presets";
+import {tryDemoIR,type IRResult} from "./demoIr";
+import {callScript} from "../src/lib/agent-core";
+import type {TriggerType} from "../src/lib/revenue-engine";
 
 const limiter=new RateLimiter(components.rateLimiter,{demoGeneration:{kind:"fixed window",rate:30,period:HOUR}});
 const LEASE_MS=10*60_000;
@@ -88,12 +91,17 @@ async function sha256Hex(text:string){
 
 /** Starts generation and returns immediately; the panel shows "Building" until the worker finishes. */
 export const generate=action({
- args:{prospectId:v.id("prospects")},
- handler:async(ctx,a):Promise<{started:boolean}>=>startDemoFor(ctx,await owner(ctx),a.prospectId)
+ args:{prospectId:v.id("prospects"),forceModel:v.optional(v.boolean())},
+ handler:async(ctx,a):Promise<{started:boolean;generator?:string;fallbackReason?:string[]}>=>startDemoFor(ctx,await owner(ctx),a.prospectId,{forceModel:a.forceModel})
 });
 /** Used by the UI action and by the agent tools. */
-export async function startDemoFor(ctx:ActionCtx,user:string,prospectId:Id<"prospects">):Promise<{started:boolean}>{
- if(!process.env.GEMINI_API_KEY)throw Error("GEMINI_API_KEY is not configured on this deployment");
+export const buildDeterministic=internalMutation({args:{prospectId:v.id("prospects"),ownerId:v.string()},returns:v.any(),
+ handler:async(ctx,a)=>{const p=await ctx.db.get(a.prospectId);if(!p||p.ownerId!==a.ownerId)throw Error("Prospect not found");return await tryDemoIR(ctx,p);}});
+/** DemoIR first (free, no model, every claim sourced); the model generator is the fallback when the IR can't pass QA. */
+export async function startDemoFor(ctx:ActionCtx,user:string,prospectId:Id<"prospects">,opts:{forceModel?:boolean}={}):Promise<{started:boolean;generator?:string;fallbackReason?:string[]}>{
+ let fallbackReason:string[]|undefined;
+ if(!opts.forceModel){const ir=await ctx.runMutation(internal.demos.buildDeterministic,{prospectId,ownerId:user}) as IRResult;if("built" in ir)return {started:true,generator:"demo-ir"};fallbackReason=ir.issues;}
+ if(!process.env.GEMINI_API_KEY)throw Error("DemoIR could not pass QA ("+(fallbackReason??[]).slice(0,2).join("; ")+") and GEMINI_API_KEY is not configured for the model fallback");
  const data=await ctx.runQuery(internal.demos.context,{prospectId,ownerId:user});
  if(!data)throw Error("Prospect not found");
  if(!data.sources.length)throw Error("Research the business website first. Demos are built only from sourced facts.");
@@ -101,7 +109,7 @@ export async function startDemoFor(ctx:ActionCtx,user:string,prospectId:Id<"pros
  const claimId=crypto.randomUUID();
  const job=await ctx.runMutation(internal.demos.begin,{prospectId,ownerId:user,claimId});
  await ctx.scheduler.runAfter(0,internal.demos.generateWorker,{prospectId,ownerId:user,claimId,...job});
- return {started:true};
+ return {started:true,generator:"model",...(fallbackReason?{fallbackReason}:{})};
 }
 
 export const failGeneration=internalMutation({
@@ -282,6 +290,10 @@ export const recordView=internalMutation({
   if(firstTime||cameBack){
    await ctx.db.insert("activities",{ownerId:c.ownerId,prospectId:c.prospectId,kind:"demo_viewed",summary:firstTime?"Demo opened for the first time":"Came back to the demo ("+views+" views)",timestamp:now});
    await ctx.scheduler.runAfter(0,internal.alerts.demoOpened,{conceptId:c._id,firstTime});
+   // View-to-call: put a "call now" card with the script at the top of Johnny's queue.
+   const p=await ctx.db.get(c.prospectId);
+   if(p){const script=callScript({name:p.name,trade:p.trade,city:p.city,trigger:{type:(p.triggerType??"none") as TriggerType,date:p.triggerDate},gap:(p.scoreReasons??[]).filter(r=>r.startsWith("Gap:")),views});
+    await ctx.db.insert("activities",{ownerId:c.ownerId,prospectId:c.prospectId,kind:"call_now",summary:("CALL NOW ("+(firstTime?"first view":"came back, "+views+" views")+")"+(p.contact&&!p.contact.includes("@")?" · "+p.contact:"")+"\n"+script.join("\n")).slice(0,700),timestamp:now});}
   }
  }
 });
