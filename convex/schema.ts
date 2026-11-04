@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {taskKind,taskStatus} from "./validators";
 
 export const stage = v.union(...(["Discover","Qualify","Extract","Design","Demo","Outreach","Convert","Produce"] as const).map(v.literal));
 export const status = v.union(...(["queued","running","needs_approval","paused","blocked","succeeded","failed"] as const).map(v.literal));
@@ -33,6 +34,11 @@ export default defineSchema({
  sendSnapshots: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),outreachId:v.id("outreach"),gates:v.optional(v.object({fit:v.number(),gap:v.number(),spend:v.number(),care:v.number(),timing:v.number()})),lookalike:v.optional(v.number()),triggerType:v.string(),triggerDate:v.optional(v.string()),triggerAgeDays:v.optional(v.number()),demoVersion:v.optional(v.string()),variant:v.string(),subject:v.string(),createdAt:v.number(),sentAt:v.optional(v.number())}).index("by_owner",["ownerId"]).index("by_outreach",["outreachId"]).index("by_owner_sentAt",["ownerId","sentAt"]),
  stageCosts: defineTable({ownerId:v.string(),stage:v.string(),usd:v.number(),computeSeconds:v.number(),tool:v.optional(v.string()),prospectId:v.optional(v.id("prospects")),at:v.number()}).index("by_owner_time",["ownerId","at"]),
  productionRuns: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),stamps:v.object({paid:v.optional(v.number()),repo_created:v.optional(v.number()),domain_connected:v.optional(v.number()),backend_live:v.optional(v.number()),site_live:v.optional(v.number())}),updatedAt:v.number()}).index("by_prospect",["prospectId"]).index("by_owner_updatedAt",["ownerId","updatedAt"]),
+ agentTasks: defineTable({ownerId:v.string(),key:v.string(),kind:taskKind,prospectId:v.optional(v.id("prospects")),input:v.optional(v.any()),status:taskStatus,attempts:v.number(),leaseId:v.optional(v.string()),leaseUntil:v.optional(v.number()),notBefore:v.optional(v.number()),claimedBy:v.optional(v.string()),error:v.optional(v.string()),result:v.optional(v.any()),createdAt:v.number(),updatedAt:v.number()}).index("by_owner_key",["ownerId","key"]).index("by_owner_status",["ownerId","status"]).index("by_owner_status_notBefore",["ownerId","status","notBefore"]).index("by_owner_status_lease",["ownerId","status","leaseUntil"]).index("by_status_updated",["status","updatedAt"]),
+ agentConfig: defineTable({ownerId:v.string(),config:v.any(),updatedAt:v.number()}).index("by_owner",["ownerId"]),
+ agentRuns: defineTable({ownerId:v.string(),taskId:v.optional(v.id("agentTasks")),kind:v.string(),tier:v.string(),worker:v.string(),startedAt:v.number(),endedAt:v.number(),status:v.union(v.literal("ok"),v.literal("error"),v.literal("skipped")),usd:v.number(),error:v.optional(v.string()),prospectId:v.optional(v.id("prospects"))}).index("by_owner_time",["ownerId","startedAt"]).index("by_owner_kind_time",["ownerId","kind","startedAt"]).index("by_started",["startedAt"]).index("by_prospect",["prospectId"]),
+ agentWorkers: defineTable({ownerId:v.string(),worker:v.string(),lastSeen:v.number()}).index("by_owner_worker",["ownerId","worker"]),
+ agentDigests: defineTable({ownerId:v.string(),kind:v.string(),subject:v.string(),body:v.string(),createdAt:v.number()}).index("by_owner_time",["ownerId","createdAt"]).index("by_created",["createdAt"]),
  optOutTokens: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),token:v.string(),value:v.string(),createdAt:v.number(),usedAt:v.optional(v.number())}).index("by_token",["token"]),
  sources: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),url:v.string(),summary:v.string(),checksum:v.string(),verifiedAt:v.number()}).index("by_prospect",["prospectId"]),
 });
