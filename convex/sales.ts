@@ -15,7 +15,8 @@ import {isSuppressed,normalizeSuppression} from "../src/lib/suppression";
 import {composeOutreach} from "../src/lib/prospect-intelligence";
 import {outreachFooter,outreachIssues} from "../src/lib/prospect-signals";
 import {addDemoLink,buildReplyPrompt,fallbackReply,firstEmail,isOptOut,REPLY_SYSTEM_PROMPT,senderEmail,stripQuoted} from "../src/lib/sales";
-import {generateText,modelList,withModelFallback} from "../src/lib/gemini";
+import {withModelFallback} from "../src/lib/gemini";
+import {generateAny,omniFromEnv} from "../src/lib/llm";
 import {cancelOpenFollowUps} from "./followups";
 import {markSent as markSentOutcome,logOutcome} from "./outcomes";
 import {classifyReply} from "../src/lib/revenue-engine";
@@ -240,9 +241,12 @@ export const suggestReply=internalAction({
   const bookingUrl=process.env.OUTREACH_BOOKING_URL||undefined;
   let body=fallbackReply({bookingUrl}),generator="template";
   const key=process.env.GEMINI_API_KEY;
-  if(key){
+  const omni=omniFromEnv();
+  if(key||omni){
    try{
-    const r=await withModelFallback(modelList(process.env.REPLY_MODELS,["gemini-3.5-flash","gemini-flash-latest","gemini-flash-lite-latest"]),m=>generateText({apiKey:key,model:m,system:REPLY_SYSTEM_PROMPT,prompt:buildReplyPrompt({...c,bookingUrl}),temperature:0.6,maxOutputTokens:2048,timeoutMs:60_000}));
+    const envModels=(process.env.REPLY_MODELS??"").split(",").map(s=>s.trim()).filter(Boolean);
+    const models=[...new Set([...envModels,...(omni?[omni.model]:[]),"gemini-3.5-flash","gemini-flash-latest","gemini-flash-lite-latest"])];
+    const r=await withModelFallback(models,m=>generateAny({model:m,system:REPLY_SYSTEM_PROMPT,prompt:buildReplyPrompt({...c,bookingUrl}),temperature:0.6,maxOutputTokens:2048,timeoutMs:60_000,geminiKey:key,omniKey:omni?.omniKey,omniBaseUrl:omni?.omniBaseUrl}));
     const text=r.text.trim();
     if(text.length>20&&!/\$\s?\d/.test(text)){body=text;generator=r.model;}
    }catch{/* keep the template reply */}

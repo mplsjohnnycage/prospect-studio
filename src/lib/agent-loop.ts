@@ -1,7 +1,9 @@
-// Gemini function-calling loop for the in-app agent. Pure (no Convex imports) so it can be
-// unit tested with a fake fetch. The caller supplies the tools and runs them for the
-// signed-in owner; this file only talks to the model.
+// Function-calling loops for the in-app agent: the original Gemini loop, plus an
+// OpenAI-compatible loop that talks to OmniRoute (models prefixed "omni:"). Pure (no
+// Convex imports) so it can be unit tested with a fake fetch. The caller supplies the
+// tools and runs them for the signed-in owner; this file only talks to the model.
 import {GeminiHttpError} from "./gemini";
+import {omniChatUrl} from "./llm";
 
 export type FunctionDeclaration={name:string;description:string;parametersJsonSchema:unknown};
 export type AgentStep={tool:string;ok:boolean;error?:string};
@@ -134,6 +136,105 @@ export async function runAgentLoop(opts:{
    if(!(e instanceof GeminiHttpError&&FALLBACK.has(e.status)))throw e;
    await new Promise(r=>setTimeout(r,2000));
    reply=await callGemini({apiKey:opts.apiKey,model,body:{...base,contents},fetchImpl,timeoutMs});
+  }
+ }
+}
+
+type OmniToolCall={id?:string;function?:{name?:string;arguments?:string}};
+type OmniMessage={role:string;content?:string;tool_calls?:{id:string;type:"function";function:{name:string;arguments:string}}[];tool_call_id?:string};
+type OmniReply={choices?:{message?:{content?:string;tool_calls?:OmniToolCall[]};finish_reason?:string}[];error?:{message?:string}};
+
+async function callOmni(opts:{url:string;apiKey:string;body:unknown;fetchImpl:typeof fetch;timeoutMs:number}):Promise<OmniReply>{
+ let res:Response;
+ try{
+  res=await opts.fetchImpl(opts.url,{
+   method:"POST",
+   headers:{"content-type":"application/json",authorization:"Bearer "+opts.apiKey},
+   body:JSON.stringify(opts.body),
+   signal:AbortSignal.timeout(opts.timeoutMs),
+  });
+ }catch(e){throw new GeminiHttpError(504,"OmniRoute request failed: "+(e instanceof Error?e.message:"network error"));}
+ const data=await res.json().catch(()=>({})) as OmniReply;
+ if(!res.ok)throw new GeminiHttpError(res.status,"OmniRoute "+res.status+": "+(data.error?.message??"request failed").slice(0,200));
+ return data;
+}
+
+/** Same contract as runAgentLoop, over OmniRoute's OpenAI-compatible chat API. */
+export async function runAgentLoopOmni(opts:{
+ baseUrl:string;
+ apiKey:string;
+ models:string[];
+ system:string;
+ history:HistoryTurn[];
+ prompt:string;
+ tools:FunctionDeclaration[];
+ callTool:(name:string,args:Record<string,unknown>)=>Promise<unknown>;
+ maxRounds?:number;
+ maxToolCalls?:number;
+ fetchImpl?:typeof fetch;
+ timeoutMs?:number;
+}):Promise<{text:string;steps:AgentStep[];model:string;touched:string[]}>{
+ const fetchImpl=opts.fetchImpl??fetch;
+ const timeoutMs=opts.timeoutMs??60_000;
+ const maxRounds=opts.maxRounds??6,maxToolCalls=opts.maxToolCalls??12;
+ const url=omniChatUrl(opts.baseUrl);
+ const tools=opts.tools.map(t=>({type:"function",function:{name:t.name,description:t.description,parameters:t.parametersJsonSchema}}));
+ const messages:OmniMessage[]=[{role:"system",content:opts.system},
+  ...opts.history.map(h=>({role:h.role==="model"?"assistant":"user",content:h.text})),
+  {role:"user",content:opts.prompt}];
+ const steps:AgentStep[]=[];
+ const touched=new Set<string>();
+ const wire=(model:string,body:Record<string,unknown>)=>callOmni({url,apiKey:opts.apiKey,body:{model,...body},fetchImpl,timeoutMs});
+
+ // Pick the first model that answers; keep it for the rest of the loop.
+ let model="";
+ let reply:OmniReply|undefined;
+ let lastError:unknown;
+ for(const m of opts.models){
+  try{reply=await wire(m.replace(/^omni:/,""),{messages,tools,tool_choice:"auto",temperature:0.3,max_tokens:2048});model=m;break;}
+  catch(e){lastError=e;if(!(e instanceof GeminiHttpError&&FALLBACK.has(e.status)))throw e;}
+ }
+ if(!reply)throw lastError instanceof Error?lastError:new Error("No OmniRoute model available");
+ const bareModel=model.replace(/^omni:/,"");
+
+ let toolCalls=0;
+ for(let round=0;;round++){
+  const msg=reply.choices?.[0]?.message;
+  const calls=msg?.tool_calls??[];
+  if(!calls.length||round>=maxRounds||toolCalls>=maxToolCalls){
+   let text=(msg?.content??"").trim();
+   if(!text&&calls.length){
+    // Out of budget while the model still wants tools: ask for a plain answer.
+    messages.push({role:"assistant",content:msg?.content??"",tool_calls:calls.map(c=>({id:c.id??"",type:"function" as const,function:{name:c.function?.name??"",arguments:c.function?.arguments??"{}"}}))});
+    messages.push({role:"user",content:"Stop using tools now and answer with what you have."});
+    const final=await wire(bareModel,{messages,temperature:0.3,max_tokens:2048});
+    text=(final.choices?.[0]?.message?.content??"").trim();
+   }
+   if(!text)text="I couldn't finish that ("+(reply.choices?.[0]?.finish_reason??"no answer")+"). Try asking again in a simpler way.";
+   return {text,steps,model,touched:[...touched]};
+  }
+  messages.push({role:"assistant",content:msg?.content??"",tool_calls:calls.map(c=>({id:c.id??"",type:"function" as const,function:{name:c.function?.name??"",arguments:c.function?.arguments??"{}"}}))});
+  for(const c of calls){
+   const name=c.function?.name??"";
+   toolCalls++;
+   let args:Record<string,unknown>={};
+   try{args=JSON.parse(c.function?.arguments??"{}") as Record<string,unknown>;}catch{args={};}
+   if(typeof args.prospectId==="string")touched.add(args.prospectId);
+   try{
+    const result=await opts.callTool(name,args);
+    steps.push({tool:name,ok:true});
+    messages.push({role:"tool",tool_call_id:c.id??"",content:JSON.stringify(truncateJson(result))});
+   }catch(e){
+    const error=cleanError(e instanceof Error?e.message:String(e));
+    steps.push({tool:name,ok:false,error});
+    messages.push({role:"tool",tool_call_id:c.id??"",content:JSON.stringify({error})});
+   }
+  }
+  try{reply=await wire(bareModel,{messages,tools,tool_choice:"auto",temperature:0.3,max_tokens:2048});}
+  catch(e){
+   if(!(e instanceof GeminiHttpError&&FALLBACK.has(e.status)))throw e;
+   await new Promise(r=>setTimeout(r,2000));
+   reply=await wire(bareModel,{messages,tools,tool_choice:"auto",temperature:0.3,max_tokens:2048});
   }
  }
 }
