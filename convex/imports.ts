@@ -53,7 +53,7 @@ export async function importRowsFor(ctx:MutationCtx,ownerId:string,rows:Row[],op
   if(contact){score+=5;reasons.push("Contact info on file");}
   const coords=r.latitude!==undefined&&r.longitude!==undefined&&Math.abs(r.latitude)<=90&&Math.abs(r.longitude)<=180?{lat:r.latitude,lng:r.longitude}:null;
   const notes=["Imported from "+source,r.address&&"Address: "+r.address,phone&&"Phone: "+phone,email&&"Email: "+email,r.rating!==undefined&&"Rating: "+r.rating+(r.reviews!==undefined?" ("+r.reviews+" reviews)":""),r.sourceUrl&&"Listing: "+r.sourceUrl].filter(Boolean).join("\n");
-  const id=await ctx.db.insert("prospects",{ownerId,name,city,trade:(r.trade??opts.trade??"Other").trim().slice(0,120)||"Other",website,contact,notes:notes.slice(0,4000),score:Math.min(95,score),stage:"Discover",status:isBlocked?"blocked":"queued",source:"import:"+source,qualified:!isBlocked&&score>=70,opportunity:website?undefined:90,scoreReasons:reasons,updatedAt:now,...(coords?{latitude:coords.lat,longitude:coords.lng}:{})});
+  const id=await ctx.db.insert("prospects",{ownerId,name,city,trade:(r.trade??opts.trade??"Other").trim().slice(0,120)||"Other",website,contact,notes:notes.slice(0,4000),score:Math.min(95,score),stage:"Discover",status:isBlocked?"blocked":"queued",source:"import:"+source,qualified:!isBlocked&&score>=70,...(!isBlocked&&score>=70?{qualifiedAt:now}:{}),opportunity:website?undefined:90,scoreReasons:reasons,updatedAt:now,...(coords?{latitude:coords.lat,longitude:coords.lng}:{})});
   if(coords)await geo.insert(ctx,id,{latitude:coords.lat,longitude:coords.lng},{ownerId,trade:(r.trade??opts.trade??"Other").slice(0,120)},Math.min(95,score));
   const listing=safeUrl(r.sourceUrl);
   if(listing){

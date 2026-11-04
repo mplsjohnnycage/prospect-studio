@@ -5,6 +5,7 @@ import {v} from "convex/values";
 import {RateLimiter,HOUR} from "@convex-dev/rate-limiter";
 import {owner} from "./identity";
 import {cancelOpenFollowUps} from "./followups";
+import {logOutcome} from "./outcomes";
 
 const limiter=new RateLimiter(components.rateLimiter,{bookingRequest:{kind:"fixed window",rate:5,period:HOUR}});
 
@@ -30,6 +31,7 @@ export const create=internalMutation({
   if(!limited.ok)return {ok:false,error:"We already got your request. We'll be in touch soon."};
   const now=Date.now();
   const id=await ctx.db.insert("bookings",{ownerId:p.ownerId,prospectId:p._id,conceptId:c._id,name:a.name,phone:a.phone,email:a.email,preferred:a.preferred,note:a.note,status:"new",createdAt:now});
+  await logOutcome(ctx,{ownerId:p.ownerId,prospectId:p._id,kind:"call_booked",at:now});
   if(!["Convert","Produce"].includes(p.stage))await ctx.db.patch(p._id,{stage:"Convert",status:"needs_approval",updatedAt:now});
   await ctx.db.insert("activities",{ownerId:p.ownerId,prospectId:p._id,kind:"call_requested",summary:a.name+" asked for a call from the demo page ("+(a.preferred||"any time")+")",timestamp:now});
   await cancelOpenFollowUps(ctx,p._id,"They asked for a call");
