@@ -1,3 +1,4 @@
+export const maxDuration=10;
 export const runtime = "nodejs";
 export async function GET() {
   return Response.json({

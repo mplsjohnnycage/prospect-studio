@@ -1,6 +1,7 @@
 import {getConvex,api} from "@/lib/convex-server";
 import {validateDemoSubmission} from "@/lib/demo-submission";
 import type {Id} from "../../../../convex/_generated/dataModel";
+export const maxDuration=30;
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 export async function POST(req:Request){

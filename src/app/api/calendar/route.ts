@@ -1,5 +1,6 @@
 import {getConvex,api} from "@/lib/convex-server";
 import type {Id} from "../../../../convex/_generated/dataModel";
+export const maxDuration=30;
 export const runtime="nodejs";export const dynamic="force-dynamic";
 export async function GET(){try{return Response.json({appointments:await getConvex().query(api.calendar.list,{})})}catch(e){return Response.json({error:e instanceof Error?e.message:"Unavailable"},{status:503})}}
 export async function POST(request:Request){try{

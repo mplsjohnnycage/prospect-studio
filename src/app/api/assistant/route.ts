@@ -1,4 +1,5 @@
 import {getConvex,api} from "@/lib/convex-server";
+export const maxDuration=30;
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 export async function GET(){

@@ -1,5 +1,6 @@
 import {getConvex,api} from "@/lib/convex-server";
 import type {Id} from "../../../../convex/_generated/dataModel";
+export const maxDuration=30;
 export const runtime="nodejs";
 export async function GET(){try{return Response.json({entries:await getConvex().query(api.suppressions.list,{})})}catch(e){return Response.json({error:e instanceof Error?e.message:"Load failed"},{status:400})}}
 export async function POST(request:Request){try{const b=await request.json();const r=await getConvex().mutation(api.suppressions.add,{value:String(b.value??""),reason:typeof b.reason==="string"?b.reason:undefined});return Response.json(r,{status:r.added?201:200})}catch(e){return Response.json({error:e instanceof Error?e.message:"Save failed"},{status:400})}}

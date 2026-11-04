@@ -1,5 +1,6 @@
 import {ConvexHttpClient} from "convex/browser";
 import {api} from "../../../../convex/_generated/api";
+export const maxDuration=15;
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
