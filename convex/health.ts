@@ -1,12 +1,12 @@
 import {query} from "./_generated/server";
+import {ownerSubjectOrNull} from "./identity";
 
 /** Public, data-free backend availability probe. Never returns tenant data. */
 export const ping=query({args:{},handler:async()=>({ok:true})});
 
 /** Which integrations are configured on this deployment (booleans only, owner-only). */
 export const config=query({args:{},handler:async ctx=>{
- const identity=await ctx.auth.getUserIdentity();
- if(!identity)return null;
+ if(!(await ownerSubjectOrNull(ctx)))return null;
  const has=(k:string)=>!!process.env[k]?.trim();
  return {
   gemini:has("GEMINI_API_KEY"),
