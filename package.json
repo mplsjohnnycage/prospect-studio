@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run verify && next build",
+    "build": "npm run verify && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test:unit": "node --import tsx --test src/lib/*.test.ts",
