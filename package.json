@@ -7,13 +7,15 @@
     "build": "npm run verify && next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --import tsx --test src/lib/*.test.ts",
+    "test:unit": "node --import tsx --test --test-concurrency=4 src/lib/*.test.ts",
     "agentos:smoke": "node --import tsx scripts/agentos-smoke.ts",
     "agentos:actor-check": "node --import tsx scripts/agentos-actor-test.ts",
     "pi:readiness": "node --import tsx scripts/pi-durable-readiness.mts",
-    "verify": "npm run test:unit && npm run test:convex && npm run lint && npm run typecheck",
+    "verify": "npm run test:unit && npm run test:convex && npm run test:headless && npm run lint && npm run typecheck",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
-    "test:convex": "vitest run"
+    "test:convex": "vitest run",
+    "test:headless": "node --import tsx --test src/lib/headless-contract.test.ts scripts/prospect-control.test.mjs",
+    "headless:cli": "node scripts/prospect-control.mjs"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",

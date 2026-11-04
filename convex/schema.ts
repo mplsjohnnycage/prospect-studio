@@ -4,6 +4,26 @@ import { v } from "convex/values";
 export const stage = v.union(...(["Discover","Qualify","Extract","Design","Demo","Outreach","Convert","Produce"] as const).map(v.literal));
 export const status = v.union(...(["queued","running","needs_approval","paused","blocked","succeeded","failed"] as const).map(v.literal));
 export default defineSchema({
+ headlessJobs: defineTable({
+  ownerId:v.string(),idempotencyKey:v.string(),kind:v.union(
+   v.literal("research_business"),v.literal("qualify_lead"),v.literal("build_demo"),
+   v.literal("review_demo"),v.literal("draft_outreach")),
+  instruction:v.string(),inputJson:v.string(),status:v.union(
+   v.literal("queued"),v.literal("leased"),v.literal("submitted"),
+   v.literal("verified"),v.literal("rejected"),v.literal("failed"),v.literal("cancelled")),
+  attempts:v.number(),leaseRenewals:v.number(),workerId:v.optional(v.string()),
+  leaseId:v.optional(v.string()),leaseUntil:v.optional(v.number()),
+  summary:v.optional(v.string()),evidence:v.optional(v.array(v.string())),
+  verifiedAt:v.optional(v.number()),verificationNotes:v.optional(v.string()),
+  createdAt:v.number(),updatedAt:v.number(),
+ }).index("by_owner_key",["ownerId","idempotencyKey"])
+   .index("by_owner_status",["ownerId","status"])
+   .index("by_owner_lease",["ownerId","status","leaseUntil"])
+   .index("by_owner_updated",["ownerId","updatedAt"]),
+ headlessJobEvents: defineTable({
+  ownerId:v.string(),jobId:v.id("headlessJobs"),eventType:v.string(),
+  actor:v.string(),note:v.string(),createdAt:v.number(),
+ }).index("by_job_time",["jobId","createdAt"]),
  assistantMessages: defineTable({ownerId:v.string(),role:v.union(v.literal("user"),v.literal("assistant")),text:v.string(),action:v.optional(v.union(v.literal("autopilot"),v.literal("inbox"),v.literal("calendar"),v.literal("studio"),v.literal("prospect"))),prospectId:v.optional(v.string()),steps:v.optional(v.array(v.object({tool:v.string(),ok:v.boolean(),error:v.optional(v.string())}))),createdAt:v.number()}).index("by_owner_time",["ownerId","createdAt"]),
  demoSubmissions: defineTable({ownerId:v.string(),prospectId:v.id("prospects"),conceptId:v.id("concepts"),kind:v.literal("preview_test"),name:v.string(),email:v.string(),message:v.string(),createdAt:v.number()}).index("by_owner_time",["ownerId","createdAt"]).index("by_prospect",["prospectId"]),
  priceBook: defineTable({ownerId:v.string(),packages:v.array(v.object({id:v.string(),name:v.string(),setup:v.number(),monthly:v.number(),includes:v.array(v.string()),paymentUrl:v.optional(v.string())})),updatedAt:v.number()}).index("by_owner",["ownerId"]),
