@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Dummy values only. CI never selects a Convex deployment and never deploys.
+  # An empty CONVEX_DEPLOYMENT keeps the CLI off production (rightful-elk-426).
+  CONVEX_DEPLOYMENT: ""
+  NEXT_PUBLIC_CONVEX_URL: "https://ci-dummy.convex.cloud"
+  NEXT_TELEMETRY_DISABLED: "1"
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          # Node 22: convex@1.49 requires >=22, vitest@4.1 accepts ^22 (not 23),
+          # next@16.4 accepts >=20.9. Verified on 22.23.4. @types/node@24 is types only.
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: corepack enable && corepack install && corepack npm ci --no-audit --no-fund
+      - name: Lint
+        run: corepack npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: corepack enable && corepack install && corepack npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: corepack npm run typecheck
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: corepack enable && corepack install && corepack npm ci --no-audit --no-fund
+      - name: Unit tests
+        run: corepack npm run test:unit
+
+  convex-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: corepack enable && corepack install && corepack npm ci --no-audit --no-fund
+      - name: Convex tests
+        run: corepack npm run test:convex
