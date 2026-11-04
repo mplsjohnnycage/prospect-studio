@@ -5,7 +5,8 @@ import {execFileSync} from "node:child_process";
 const extra=process.argv.includes("--prod")?["--prod"]:[];
 type Row=Record<string,any>;
 function table(name:string):Row[]{
- const out=execFileSync("npx",["convex","data",name,"--limit","100000","--format","jsonLines",...extra],{encoding:"utf8",stdio:["ignore","pipe","ignore"],maxBuffer:1<<28});
+ let out="";
+ try{out=execFileSync("npx",["convex","data",name,"--limit","10000","--format","jsonLines",...extra],{encoding:"utf8",stdio:["ignore","pipe","ignore"],maxBuffer:1<<28});}catch(e){console.error(`[scorecard] could not read ${name}: ${(e as Error).message.split("\n")[0]}`);}
  return out.split("\n").filter(l=>l.trim().startsWith("{")).map(l=>JSON.parse(l));
 }
 const pct=(n:number,d:number)=>d?`${(100*n/d).toFixed(1)}% (${n}/${d})`:`n/a (0 denominator)`;
