@@ -3,13 +3,16 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: false,
-  // One canonical origin. OAuth state cookies are host-only, and Google and
-  // AgentID callbacks target prospect-studio-johnnyc.vercel.app. Starting
-  // login on an alternate public host splits those cookies and the callback
-  // dies with state_mismatch. Bounce every alternate host to the canonical
-  // domain before any auth request, preserving path and query.
-  // The kappa rule stays permanent (308), matching main's 2f1b449. The git-main
-  // host is the same class of public alias, so it uses the same permanence.
+  // Keep Rivet native runtimes external and include optional NAPI artifacts.
+  serverExternalPackages: ["rivetkit", "@rivetkit/rivetkit-napi", "@rivet-dev/agentos-core", "sandbox-agent", "@fly/sprites"],
+  outputFileTracingIncludes: {
+    "/api/rivet/[...all]": [
+      "./node_modules/@rivetkit/rivetkit-napi/**/*",
+      "./node_modules/@rivetkit/rivetkit-napi-linux-x64-gnu/**/*",
+    ],
+  },
+  // Redirect alternate public hosts to the canonical OAuth callback origin.
+
   async redirects() {
     return [
       {

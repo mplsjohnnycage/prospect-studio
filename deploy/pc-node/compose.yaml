@@ -1,0 +1,31 @@
+# PC node: a long-running Rivet runner on the desktop that connects out to Rivet Cloud.
+# Heavy and free-compute work lands here (OmniRoute models, Ollama embeddings, browser
+# agent, the PC Sandbox Agent). Rivet Cloud stays the engine; nothing is exposed publicly.
+#
+# Before the first start, create the runner pool "pc-node" (kind: normal) in the Rivet
+# dashboard for the production namespace, then put the namespace secret endpoint in
+# ./pc-node.env as RIVET_ENDPOINT=https://<namespace>:<sk_token>@api.rivet.dev
+#
+#   docker compose -f deploy/pc-node/compose.yaml up -d
+name: prospect-pc-node
+services:
+  runner:
+    image: node:24-bookworm-slim
+    working_dir: /app
+    command: ["sh", "-c", "npm ci --omit=dev --no-audit --no-fund && node --import tsx src/actors/start.ts"]
+    restart: unless-stopped
+    mem_limit: 768m            # spike: 3 agentOS VMs pin a 512m runner; 768m leaves headroom
+    env_file: [./pc-node.env]
+    environment:
+      RIVET_RUNNER: pc-node
+      NODE_ENV: production
+      OMNIROUTE_BASE_URL: http://host.docker.internal:20128
+      SANDBOX_AGENT_PC_URL: http://host.docker.internal:2468
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ../..:/app
+      - pc-node-modules:/app/node_modules
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  pc-node-modules:
