@@ -60,11 +60,11 @@ export const chat=action({
   if(prompt.length<2||prompt.length>2000)throw Error("Ask something between 2 and 2,000 characters");
   const key=process.env.GEMINI_API_KEY;
   const omni=omniFromEnv();
-  if(!key&&!omni)throw Error("The agent needs GEMINI_API_KEY or OmniRoute configured on this deployment");
   const past=await ctx.runQuery(internal.assistant.recent,{ownerId:user});
   await ctx.runMutation(internal.assistant.save,{ownerId:user,role:"user",text:prompt});
   let result:{text:string;steps:{tool:string;ok:boolean;error?:string}[];touched:string[]};
   try{
+   if(!key&&!omni)throw Error("The agent needs GEMINI_API_KEY or OmniRoute configured on this deployment");
    const shared={
     system:agentSystemPrompt(new Date().toISOString().slice(0,10)),
     history:past,
