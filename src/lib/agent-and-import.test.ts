@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {businessKey,cityFromAddress,parseCsv,parseImport} from "./prospect-import";
-import {cleanError,runAgentLoop} from "./agent-loop";
+import {cleanError,runAgentLoop,runAgentLoopOmni} from "./agent-loop";
 
 test("parses an Apify Google Maps style JSON export", () => {
   const json = JSON.stringify([
@@ -197,4 +197,51 @@ test("google places results become import rows; closed businesses are skipped", 
   assert.equal(row?.latitude, 44.96);
   assert.equal(placeToRow({ displayName: { text: "Gone LLC" }, businessStatus: "CLOSED_PERMANENTLY" }, "Painting", "X"), null);
   assert.deepEqual(placesQueries("Painting", "Oakdale, MN"), ["painting in Oakdale, MN", "house painters in Oakdale, MN", "painting contractors in Oakdale, MN"]);
+});
+
+function fakeOmni(replies: unknown[]) {
+  const calls: {url: string; body: Record<string, unknown>}[] = [];
+  const fetchImpl = (async (url: string, init: RequestInit) => {
+    calls.push({url: String(url), body: JSON.parse(String(init.body)) as Record<string, unknown>});
+    const next = replies.shift();
+    if (typeof next === "number") return new Response(JSON.stringify({error: {message: "busy"}}), {status: next});
+    return new Response(JSON.stringify(next), {status: 200});
+  }) as unknown as typeof fetch;
+  return {fetchImpl, calls};
+}
+
+test("omni agent loop runs tools over the OpenAI-compatible API and returns the answer", async () => {
+  const {fetchImpl, calls} = fakeOmni([
+    {choices: [{message: {content: "", tool_calls: [{id: "t1", type: "function", function: {name: "get_prospect", arguments: JSON.stringify({prospectId: "p9"})}}]}, finish_reason: "tool_calls"}]},
+    {choices: [{message: {content: "Acme is ready for outreach."}, finish_reason: "stop"}]},
+  ]);
+  const called: string[] = [];
+  const out = await runAgentLoopOmni({
+    baseUrl: "https://omni.example/omni", apiKey: "k", models: ["omni:auto"], system: "sys", history: [], prompt: "hi",
+    tools: [{name: "get_prospect", description: "d", parametersJsonSchema: {type: "object", properties: {prospectId: {type: "string"}}}}],
+    callTool: async (name) => { called.push(name); return {ok: true}; }, fetchImpl,
+  });
+  assert.deepEqual(called, ["get_prospect"]);
+  assert.equal(out.text, "Acme is ready for outreach.");
+  assert.equal(out.model, "omni:auto");
+  assert.deepEqual(out.touched, ["p9"]);
+  assert.deepEqual(out.steps, [{tool: "get_prospect", ok: true}]);
+  assert.equal(calls[0].url, "https://omni.example/omni/v1/chat/completions");
+  assert.equal(calls[0].body.model, "auto");
+  const second = calls[1].body.messages as {role: string; content?: string; tool_call_id?: string}[];
+  assert.equal(second[second.length - 1].role, "tool");
+  assert.equal(second[second.length - 1].tool_call_id, "t1");
+});
+
+test("omni agent loop falls back to the next model when the first is overloaded", async () => {
+  const {fetchImpl} = fakeOmni([
+    503,
+    {choices: [{message: {content: "Recovered."}, finish_reason: "stop"}]},
+  ]);
+  const out = await runAgentLoopOmni({
+    baseUrl: "http://h:20128", apiKey: "k", models: ["omni:a", "omni:b"], system: "sys", history: [], prompt: "hi",
+    tools: [], callTool: async () => ({}), fetchImpl,
+  });
+  assert.equal(out.model, "omni:b");
+  assert.equal(out.text, "Recovered.");
 });

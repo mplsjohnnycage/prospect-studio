@@ -1,6 +1,8 @@
-// In-app agent. A Gemini function-calling loop over the shared tools in agentTools.ts,
-// acting only for the signed-in owner. It can look things up, research, build demos and
-// write drafts. Approving and sending stay buttons Johnny presses himself.
+// In-app agent. A function-calling loop over the shared tools in agentTools.ts, acting
+// only for the signed-in owner. OmniRoute answers first when it is configured on the
+// deployment (OMNIROUTE_BASE_URL + OMNIROUTE_API_KEY); the Gemini loop is the fallback.
+// It can look things up, research, build demos and write drafts. Approving and sending
+// stay buttons Johnny presses himself.
 import {action,internalMutation,internalQuery,mutation,query} from "./_generated/server";
 import {v} from "convex/values";
 import {toJsonSchema} from "@convex-dev/mcp";
@@ -8,8 +10,9 @@ import {internal} from "./_generated/api";
 import {owner} from "./identity";
 import {AGENT_TOOLS} from "./agentTools";
 import {answerOperations} from "../src/lib/ops-assistant";
-import {agentSystemPrompt,runAgentLoop,type FunctionDeclaration} from "../src/lib/agent-loop";
+import {agentSystemPrompt,runAgentLoop,runAgentLoopOmni,type FunctionDeclaration} from "../src/lib/agent-loop";
 import {modelList} from "../src/lib/gemini";
+import {omniFromEnv} from "../src/lib/llm";
 
 const stepV=v.object({tool:v.string(),ok:v.boolean(),error:v.optional(v.string())});
 const actionV=v.optional(v.union(v.literal("autopilot"),v.literal("inbox"),v.literal("calendar"),v.literal("studio"),v.literal("prospect")));
@@ -56,24 +59,36 @@ export const chat=action({
   const prompt=a.text.trim();
   if(prompt.length<2||prompt.length>2000)throw Error("Ask something between 2 and 2,000 characters");
   const key=process.env.GEMINI_API_KEY;
-  if(!key)throw Error("The agent needs GEMINI_API_KEY on this deployment");
+  const omni=omniFromEnv();
+  if(!key&&!omni)throw Error("The agent needs GEMINI_API_KEY or OmniRoute configured on this deployment");
   const past=await ctx.runQuery(internal.assistant.recent,{ownerId:user});
   await ctx.runMutation(internal.assistant.save,{ownerId:user,role:"user",text:prompt});
   let result:{text:string;steps:{tool:string;ok:boolean;error?:string}[];touched:string[]};
   try{
-   result=await runAgentLoop({
-    apiKey:key,
-    models:modelList(process.env.AGENT_MODELS,["gemini-3.5-flash","gemini-flash-latest","gemini-3.8-flash"]),
+   const shared={
     system:agentSystemPrompt(new Date().toISOString().slice(0,10)),
     history:past,
     prompt,
     tools:declarations(),
-    callTool:async(name,args)=>{
+    callTool:async(name:string,args:Record<string,unknown>)=>{
      const t=AGENT_TOOLS[name];
      if(!t)throw Error("Unknown tool "+name);
      return await t.run(ctx,user,args);
     },
-   });
+   };
+   let omniError:unknown;
+   if(omni){
+    try{result=await runAgentLoopOmni({baseUrl:omni.omniBaseUrl,apiKey:omni.omniKey,models:[omni.model],...shared});}
+    catch(e){omniError=e;}
+   }
+   if(!result!){
+    if(!key)throw omniError instanceof Error?omniError:Error("OmniRoute did not answer");
+    result=await runAgentLoop({
+     apiKey:key,
+     models:modelList(process.env.AGENT_MODELS,["gemini-3.5-flash","gemini-flash-latest","gemini-3.8-flash"]),
+     ...shared,
+    });
+   }
   }catch(e){
    result={text:"The agent couldn't reach the model right now ("+(e instanceof Error?e.message:"error").slice(0,160)+"). Nothing was changed. Try again in a minute.",steps:[],touched:[]};
   }
