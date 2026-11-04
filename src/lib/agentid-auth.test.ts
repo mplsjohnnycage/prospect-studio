@@ -37,6 +37,17 @@ test("AgentID only accepts verified AgentMail inbox identities", () => {
 test("AgentID identity can never satisfy the owner gate", () => {
   assert.equal(isOwnerAccount({ email: "owner@agentmail.to" }, ["agentid"], "owner@agentmail.to"), false);
   assert.equal(isOwnerAccount({ email: "owner@agentmail.to" }, ["credential"], "owner@agentmail.to"), true);
-  assert.equal(isOwnerAccount({ email: "owner@agentmail.to" }, ["google"], "owner@agentmail.to"), true);
+  assert.equal(isOwnerAccount({ email: "owner@agentmail.to", emailVerified: true }, ["google"], "owner@agentmail.to"), true);
   assert.equal(isOwnerAccount({ email: "other@agentmail.to" }, ["credential"], "owner@agentmail.to"), false);
+});
+
+test("secondary Google owner email must be an exact verified allowlisted identity", () => {
+  const primary = "johnnyc@agentmail.to";
+  const googleOwner = "mplsjohnnycage@makeithappenentllc.com";
+  const secondaryOwnerEmails = [googleOwner];
+  assert.equal(isOwnerAccount({ email: googleOwner, emailVerified: true }, ["google"], primary, secondaryOwnerEmails), true);
+  assert.equal(isOwnerAccount({ email: "stranger@makeithappenentllc.com", emailVerified: true }, ["google"], primary, secondaryOwnerEmails), false);
+  assert.equal(isOwnerAccount({ email: googleOwner, emailVerified: false }, ["google"], primary, secondaryOwnerEmails), false);
+  assert.equal(isOwnerAccount({ email: googleOwner, emailVerified: true }, ["agentid"], primary, secondaryOwnerEmails), false);
+  assert.equal(isOwnerAccount({ email: googleOwner, emailVerified: true }, ["credential"], primary, secondaryOwnerEmails), false);
 });
