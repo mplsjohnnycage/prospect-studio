@@ -4,10 +4,13 @@
 import type {ActionCtx} from "./_generated/server";
 import {internal} from "./_generated/api";
 import {PLACES_FIELDS,placeToRow,placesQueries,type Place} from "../src/lib/places";
+import {paidSourceAllowed} from "../src/lib/revenue-engine";
 
 export async function placesDiscovery(ctx:ActionCtx,ownerId:string,trade:string,city:string,maxPages=2){
  const key=process.env.GOOGLE_MAPS_API_KEY;
  if(!key)throw Error("GOOGLE_MAPS_API_KEY is not configured");
+ // v3 item 4: Google Places is a paid source; it runs only when ALLOW_PAID_SOURCES=true. Free discovery is scripts/discover-local.mts.
+ if(!paidSourceAllowed(process.env))throw Error("Google Places is a paid source and ALLOW_PAID_SOURCES is off. Use free discovery (permits, NPI, SBA, SOS) instead.");
  const queries=placesQueries(trade,city);
  const seen=new Set<string>();
  const rows=[];

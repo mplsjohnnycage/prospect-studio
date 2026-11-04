@@ -5,7 +5,8 @@ import {components,internal} from "./_generated/api";
 import { authComponent,createAuth } from "./auth";
 import {mcp} from "./mcp";
 import {appendHttp as actorEventsAppend} from "./actorEvents";
-import {BOOKING_CSP,bookingPage,bookingThanksPage,injectBookingCta,isHumanView,parseBookingForm} from "../src/lib/booking";
+import {BOOKING_CSP,bookingPage,bookingThanksPage,injectBookingCta,isHumanView,parseBookingForm,parseSegmentExtras} from "../src/lib/booking";
+import {segmentFor,systemFor} from "../src/lib/revenue-build";
 import {SENDER_BRAND} from "./demos";
 import {parseAcceptForm,proposalAcceptedPage,proposalPage} from "../src/lib/pricing";
 const http=httpRouter();
@@ -36,21 +37,23 @@ const bookToken=(request:Request)=>{const t=new URL(request.url).pathname.slice(
 http.route({pathPrefix:"/book/",method:"GET",handler:httpAction(async(ctx,request)=>{
  const token=bookToken(request);if(!token)return notFound();
  const page=await ctx.runQuery(internal.bookings.pageContext,{token});if(!page)return notFound();
- return new Response(bookingPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref:"/demo/"+token}),{status:200,headers:bookHeaders});
+ return new Response(bookingPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref:"/demo/"+token,system:systemFor(segmentFor(page.trade))}),{status:200,headers:bookHeaders});
 })});
 http.route({pathPrefix:"/book/",method:"POST",handler:httpAction(async(ctx,request)=>{
  const token=bookToken(request);if(!token)return notFound();
  const page=await ctx.runQuery(internal.bookings.pageContext,{token});if(!page)return notFound();
  const body=(await request.text()).slice(0,8000);
- const parsed=parseBookingForm(body);
+ const system=systemFor(segmentFor(page.trade));
+ const base=parseBookingForm(body),extras=parseSegmentExtras(body,system);
+ const parsed=!base.ok?base:!extras.ok?{ok:false as const,error:extras.error}:{ok:true as const,value:{...base.value,note:[extras.note,base.value.note].filter(Boolean).join("\n").slice(0,1000)}};
  const demoHref="/demo/"+token;
  if(!parsed.ok){
   if(parsed.spam)return new Response(bookingThanksPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref}),{status:200,headers:bookHeaders});
   const values=Object.fromEntries(new URLSearchParams(body));
-  return new Response(bookingPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref,error:parsed.error,values}),{status:400,headers:bookHeaders});
+  return new Response(bookingPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref,error:parsed.error,values,system}),{status:400,headers:bookHeaders});
  }
  const r=await ctx.runMutation(internal.bookings.create,{token,...parsed.value});
- if(!r.ok)return new Response(bookingPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref,error:r.error,values:parsed.value}),{status:429,headers:bookHeaders});
+ if(!r.ok)return new Response(bookingPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref,error:r.error,values:parsed.value,system}),{status:429,headers:bookHeaders});
  return new Response(bookingThanksPage({businessName:page.businessName,senderBrand:SENDER_BRAND,demoHref}),{status:200,headers:bookHeaders});
 })});
 // Proposal links: the packages Johnny picked for a prospect, with a "Choose" button each.

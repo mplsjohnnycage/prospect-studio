@@ -296,7 +296,10 @@ export async function whyNowDraft(ctx:MutationCtx,p:Doc<"prospects">){
  const value=p.contact&&p.contact.includes("@")?p.contact:p.website;
  if(value)await ctx.db.insert("optOutTokens",{ownerId:p.ownerId,prospectId:p._id,token,value,createdAt:Date.now()});
  const srcs=await ctx.db.query("sources").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).take(5);
- return composeWhyNow({name:p.name,trade:p.trade,city:p.city,
+ // v3 item 25: the proposal link goes in only when Johnny turned PROPOSAL_LINKS_ENABLED on and quoted a proposal.
+ const flag=/^(1|true|on)$/i.test(process.env.PROPOSAL_LINKS_ENABLED??"");
+ const prop=flag?await ctx.db.query("proposals").withIndex("by_prospect",q=>q.eq("prospectId",p._id)).order("desc").first():null;
+ return composeWhyNow({proposalUrl:prop&&base?base+"/proposal/"+prop.token:undefined,name:p.name,trade:p.trade,city:p.city,
   trigger:p.triggerType?{type:p.triggerType as TriggerType,date:p.triggerDate,source:p.triggerSource}:{type:"none"},
   gap:(p.scoreReasons??[]).filter(r=>/^Gap:|^Opportunity:/.test(r)).map(r=>r.replace(/^Opportunity:\s*/,"")),
   facts:srcs.filter(s=>s.url).slice(0,1).map(s=>({text:s.summary.split("\n")[0].slice(0,140),sourceUrl:s.url})),

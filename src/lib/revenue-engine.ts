@@ -122,7 +122,7 @@ export function careScore(r: Reviews, now = Date.now()): { score: number; reason
 }
 
 // ---------- Item 5: five gates ----------
-export type GateInput = { trade: string; site: SiteHealth; reviews?: Reviews; adsActive?: boolean; paidListing?: boolean; triggers?: Trigger[]; now?: number };
+export type GateInput = { trade: string; fitBand?: number; site: SiteHealth; reviews?: Reviews; adsActive?: boolean; paidListing?: boolean; triggers?: Trigger[]; now?: number };
 export type Gates = { fit: number; gap: number; spend: number; care: number; timing: number };
 export type GateResult = { gates: Gates; passed: boolean; tier: "top" | "strong" | "standard" | "hold"; total: number; trigger: Trigger; reasons: string[] };
 const HIGH_TICKET = /law|attorney|dental|dentist|med ?spa|orthodont|roof|hvac|plumb|remodel|solar|landscap|concrete|electric|chiropract|real estate|builder|pool|fenc|siding|window|paint/i;
@@ -135,7 +135,9 @@ export function pickTrigger(ts: Trigger[] = [], now = Date.now()): Trigger {
 export function fiveGates(i: GateInput): GateResult {
   const now = i.now ?? Date.now();
   const reasons: string[] = [];
-  const fit = HIGH_TICKET.test(i.trade) ? 90 : LOW_TICKET.test(i.trade) ? 20 : 60;
+  const ticketFit = HIGH_TICKET.test(i.trade) ? 90 : LOW_TICKET.test(i.trade) ? 20 : 60;
+  // Item 18: the segment's price band (seller asking prices, an assumption) is averaged into Fit when known.
+  const fit = i.fitBand === undefined ? ticketFit : Math.round((ticketFit + i.fitBand) / 2);
   const gap = i.site.score;
   const spend = (i.adsActive ? 70 : 0) + (i.paidListing ? 30 : 0);
   const care = i.reviews ? careScore(i.reviews, now) : { score: 0, reasons: [] as string[], spike: undefined };
@@ -144,6 +146,7 @@ export function fiveGates(i: GateInput): GateResult {
   const timing = age === undefined ? 0 : age <= ON_TRIGGER_DAYS ? 100 : age <= 60 ? 50 : 10;
   const gates = { fit, gap, spend: Math.min(100, spend), care: care.score, timing };
   reasons.push(...i.site.issues.map(x => "Gap: " + x), ...care.reasons.map(x => "Care: " + x));
+  if (i.fitBand !== undefined) reasons.push("Fit: segment price band " + i.fitBand);
   if (i.adsActive) reasons.push("Spend: running ads");
   if (trigger.type !== "none") reasons.push("Timing: " + trigger.type + (trigger.date ? " on " + trigger.date : ""));
   const passed = (Object.keys(GATE_FLOOR) as (keyof Gates)[]).every(k => gates[k] >= GATE_FLOOR[k]);
@@ -169,7 +172,7 @@ export function selectDemoBudget<T extends BudgetCandidate>(items: T[], opts: { 
 export const SENDER = "johnnyc@agentmail.to";
 export const POSTAL_ADDRESS = "13 5th Ave, Oakdale, MN 55128";
 export type Fact = { text: string; sourceUrl: string };
-export type WhyNowInput = { name: string; trade: string; city: string; trigger: Trigger; gap: string[]; facts: Fact[]; demoUrl?: string; optOutUrl?: string; postalAddress?: string; now?: number };
+export type WhyNowInput = { name: string; trade: string; city: string; trigger: Trigger; gap: string[]; facts: Fact[]; demoUrl?: string; proposalUrl?: string; optOutUrl?: string; postalAddress?: string; now?: number };
 const TRIGGER_LINE: Record<TriggerType, (n: string, d: string) => string> = {
   new_filing: (n, d) => `I saw ${n} filed with the Minnesota Secretary of State${d}. Congrats on the launch.`,
   permit: (n, d) => `I noticed a new permit for ${n}${d}, so it looks like you're growing.`,
@@ -195,6 +198,7 @@ export function composeWhyNow(p: WhyNowInput): WhyNowDraft {
   if (gap) lines.push("", "Found it: " + gap.replace(/^Gap:\s*/, "") + "." + paid);
   if (fact) lines.push("", `I built around what customers already say: ${fact.text} (${fact.sourceUrl}).`);
   lines.push("", "Fix it: I made a private DEMO site for " + p.name + "." + (p.demoUrl ? " " + p.demoUrl : " I can send the private link.") + " It's not published anywhere, and if you want it, it's yours: your code, your domain, live within hours.", "", "Worth a 15-minute call?", "", "Johnny");
+  if (p.proposalUrl) lines.splice(lines.length - 2, 0, "Prices and options, if useful: " + p.proposalUrl, "");
   const address = (p.postalAddress ?? POSTAL_ADDRESS).trim();
   const footer = ["", "--", "MPLS Johnny Cage · " + SENDER];
   if (address) footer.push(address);
