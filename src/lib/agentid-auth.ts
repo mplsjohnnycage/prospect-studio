@@ -5,6 +5,8 @@ export type AgentIdEnvironment = {
   AGENTID_CLIENT_ID?: string;
   AGENTID_CLIENT_SECRET?: string;
   AGENTID_ISSUER?: string;
+  /** Set to "1" only to let a NEW AgentID agent account be created. Default: sign-up disabled. */
+  AGENTID_SIGNUP_ENABLED?: string;
 };
 
 export function createAgentIdProviderConfig(env: AgentIdEnvironment) {
@@ -24,8 +26,9 @@ export function createAgentIdProviderConfig(env: AgentIdEnvironment) {
     clientSecret,
     scopes: ["openid", "profile", "email"],
     pkce: true,
-    disableImplicitSignUp: false,
-    disableSignUp: false,
+    // Sign-up is off by default: only already-provisioned AgentID accounts can sign in.
+    disableImplicitSignUp: env.AGENTID_SIGNUP_ENABLED !== "1",
+    disableSignUp: env.AGENTID_SIGNUP_ENABLED !== "1",
     mapProfileToUser: (profile: Record<string, unknown>) => {
       const email = typeof profile.email === "string" ? profile.email.trim().toLowerCase() : "";
       const verified = profile.email_verified === true || profile.emailVerified === true;

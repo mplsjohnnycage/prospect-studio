@@ -29,6 +29,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     AGENTID_CLIENT_ID: process.env.AGENTID_CLIENT_ID,
     AGENTID_CLIENT_SECRET: process.env.AGENTID_CLIENT_SECRET,
     AGENTID_ISSUER: process.env.AGENTID_ISSUER,
+    AGENTID_SIGNUP_ENABLED: process.env.AGENTID_SIGNUP_ENABLED,
   });
 
   return betterAuth({

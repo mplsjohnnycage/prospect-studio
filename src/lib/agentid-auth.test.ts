@@ -16,6 +16,9 @@ test("AgentID provider uses the configured OIDC discovery URL and issuer", () =>
   assert.equal(provider.issuer, "https://auth.agentid.com");
   assert.equal(provider.requireIssuerValidation, true);
   assert.equal(provider.pkce, true);
+  assert.equal(provider.disableSignUp, true);
+  assert.equal(provider.disableImplicitSignUp, true);
+  assert.equal(createAgentIdProviderConfig({ ...credentials, AGENTID_SIGNUP_ENABLED: "1" })!.disableSignUp, false);
 });
 
 test("AgentID provider stays unavailable until both credentials are supplied", () => {

@@ -1,13 +1,14 @@
 // @vitest-environment edge-runtime
 /// <reference types="vite/client" />
 import {convexTest} from "convex-test";
-import {afterEach,expect,test,vi} from "vitest";
+import {afterEach,beforeEach,expect,test,vi} from "vitest";
 import schema from "./schema";
 import {internal} from "./_generated/api";
 import {constantTimeEqual} from "./actorEvents";
 
 const modules=import.meta.glob(["./**/*.ts","./_generated/*.js","!./**/*.test.ts","!./**/*.d.ts"]);
 const ev=(sequence:number,actorId="run-1")=>({actorId,runId:actorId,sequence,eventType:"line",payload:"l"+sequence,ownerId:"u1",createdAt:sequence});
+beforeEach(()=>vi.stubEnv("ACTOR_APPEND_OWNER_ID","u1"));
 afterEach(()=>vi.unstubAllEnvs());
 
 test("appendEvents dedupes by (actorId, sequence) within and across batches; prospectId optional",async()=>{
