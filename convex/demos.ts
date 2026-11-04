@@ -12,7 +12,7 @@ import {directions} from "../src/lib/domain";
 import {buildBusinessProfile} from "../src/lib/business-profile";
 import {buildDemoFacts,buildDemoPrompt,buildFixPrompt,buildReviewPrompt,DEMO_REVIEW_SYSTEM,DEMO_SYSTEM_PROMPT,extractHtml,finalizeDemoHtml,parseReview,validateDemoHtml} from "../src/lib/demo-generation";
 import {GeminiHttpError,withModelFallback} from "../src/lib/gemini";
-import {demoModelList,generateAny} from "../src/lib/llm";
+import {demoModelList,generateAny,omniFromEnv} from "../src/lib/llm";
 import {logOutcome} from "./outcomes";
 import {pickPreset,presetBrief} from "../src/lib/design-presets";
 
@@ -119,7 +119,9 @@ export const generateWorker=internalAction({
  handler:async(ctx,a)=>{
   try{
    const geminiKey=process.env.GEMINI_API_KEY,zenKey=process.env.OPENCODE_API_KEY;
-   if(!geminiKey&&!zenKey)throw Error("GEMINI_API_KEY is not configured");
+   // OmniRoute runs on the PC node; it is used only where OMNIROUTE_BASE_URL is reachable and set.
+   const omni=omniFromEnv();
+   if(!geminiKey&&!zenKey&&!omni)throw Error("GEMINI_API_KEY is not configured");
    const data=await ctx.runQuery(internal.demos.context,{prospectId:a.prospectId,ownerId:a.ownerId});
    if(!data)throw Error("Prospect not found");
    const p=data.prospect;
@@ -128,7 +130,7 @@ export const generateWorker=internalAction({
    const preset=pickPreset(p.trade,a.direction);
    const designBrief=presetBrief(preset,facts.palette);
    // Flash models work on the free tier; Zen models are a fallback when OPENCODE_API_KEY is set. DEMO_MODELS overrides the order.
-   const models=demoModelList(process.env.DEMO_MODELS,!!zenKey);
+   const models=demoModelList(process.env.DEMO_MODELS,!!zenKey,omni?.model);
    const job={variant:a.variant,direction:a.direction,description:a.description};
    const gaps=prof.siteStatus.factors;
    // Stay inside Convex's 10-minute action limit no matter how many retries and fallbacks run.
@@ -139,7 +141,7 @@ export const generateWorker=internalAction({
    const gen=async(system:string,prompt:string,temperature:number,maxOutputTokens:number,timeoutMs:number)=>{
     let last:unknown;
     for(let round=0;round<3;round++){
-     try{return await withModelFallback(models,m=>generateAny({model:m,system,prompt,temperature,maxOutputTokens,timeoutMs:Math.min(timeoutMs,Math.max(30_000,left()-20_000)),geminiKey,zenKey}));}
+     try{return await withModelFallback(models,m=>generateAny({model:m,system,prompt,temperature,maxOutputTokens,timeoutMs:Math.min(timeoutMs,Math.max(30_000,left()-20_000)),geminiKey,zenKey,omniKey:omni?.omniKey,omniBaseUrl:omni?.omniBaseUrl}));}
      catch(e){
       last=e;
       if(!(e instanceof GeminiHttpError&&[429,500,503,504].includes(e.status))||left()<120_000)throw e;
