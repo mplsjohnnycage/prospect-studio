@@ -14,6 +14,7 @@ export const config=query({args:{},handler:async ctx=>{
   postalAddress:has("OUTREACH_POSTAL_ADDRESS"),
   firecrawl:(process.env.FIRECRAWL_API_KEY??"").startsWith("fc-"),
   places:has("GOOGLE_MAPS_API_KEY"),
+  paidSources:process.env.ALLOW_PAID_SOURCES==="true",
   zen:has("OPENCODE_API_KEY"),
   bookingUrl:has("OUTREACH_BOOKING_URL"),
  };
