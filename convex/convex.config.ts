@@ -10,6 +10,8 @@ import firecrawl from "@firecrawl/firecrawl-convex/convex.config.js";
 import agentmail from "@agentmail/convex/convex.config.js";
 import workpool from "@convex-dev/workpool/convex.config.js";
 import mcp from "@convex-dev/mcp/convex.config.js";
+import workflow from "@convex-dev/workflow/convex.config.js";
+import r2 from "@convex-dev/r2/convex.config.js";
 const app=defineApp({env:{FIRECRAWL_API_KEY:v.string(),FIRECRAWL_WEBHOOK_SECRET:v.optional(v.string())}});
 app.use(betterAuth);
 app.use(agent);
@@ -21,4 +23,6 @@ app.use(firecrawl,{httpPrefix:"/firecrawl/",env:{FIRECRAWL_API_KEY:app.env.FIREC
 app.use(agentmail);
 app.use(workpool,{name:"researchPool"});
 app.use(mcp);
+app.use(workflow);
+app.use(r2);
 export default app;

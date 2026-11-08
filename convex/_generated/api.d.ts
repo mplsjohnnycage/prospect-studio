@@ -115,4 +115,6 @@ export declare const components: {
   agentmail: import("@agentmail/convex/_generated/component.js").ComponentApi<"agentmail">;
   researchPool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"researchPool">;
   mcp: import("@convex-dev/mcp/_generated/component.js").ComponentApi<"mcp">;
+  workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
+  r2: import("@convex-dev/r2/_generated/component.js").ComponentApi<"r2">;
 };
