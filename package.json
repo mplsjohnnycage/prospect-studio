@@ -7,7 +7,7 @@
     "build": "npm run verify && next build --webpack && node scripts/check-built-styles.mjs",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --import tsx --test src/lib/*.test.ts",
+    "test:unit": "node --import tsx --test --test-concurrency=4 src/lib/*.test.ts",
     "agentos:smoke": "node --import tsx scripts/agentos-smoke.ts",
     "agentos:actor-check": "node --import tsx scripts/agentos-actor-test.ts",
     "pi:readiness": "node --import tsx scripts/pi-durable-readiness.mts",
