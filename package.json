@@ -16,7 +16,8 @@
     "test:convex": "vitest run",
     "agent:preflight": "node scripts/agent-preflight.mjs",
     "graph": "npm --prefix graph run graph --",
-    "lifecycle": "npm --prefix lifecycle run lifecycle --"
+    "lifecycle": "npm --prefix lifecycle run lifecycle --",
+    "agent:loop": "node scripts/agent-auto-loop.mjs"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",

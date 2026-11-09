@@ -16,17 +16,20 @@ Before writing code, an agent MUST:
    - `docs/BASELINE.md`
    - `docs/LIFECYCLE.md`
    - `docs/SORT_OUT.md`
+   - `docs/AGENT_LOOP.md` (auto-loop protocol)
 3. Run harness preflight:
 
 ```bash
 npm run agent:preflight
 ```
 
-4. Ask the build DAG what to do next:
+4. Prefer the **auto-loop** for what to build next:
 
 ```bash
+npm run agent:loop -- tick --claim
+# equivalent manual path:
 npm run graph -- next --loop loop1
-npm run graph -- prompt <NODE>    # e.g. P0 or P1
+npm run graph -- prompt <NODE>
 ```
 
 5. Ask the lifecycle spine before any stage/command change:
@@ -37,6 +40,14 @@ npm run lifecycle -- can --from <STAGE> --to <STAGE> [--human] [--command <kind>
 ```
 
 If preflight fails, **stop** and fix the harness/lane — do not improvise a new stack.
+
+### Auto-loop rules
+
+1. **One tick = one graph node.** Finish exit gate + evidence before the next tick.
+2. **MUST** push only to the phase0 branch; **MUST NOT** merge #35.
+3. **MUST** halt on human gates (prod Convex/Vercel, merge).
+4. After `done`, immediately `tick --claim` for the next ready node (or idle).
+5. Detail: [`docs/AGENT_LOOP.md`](docs/AGENT_LOOP.md).
 
 ---
 

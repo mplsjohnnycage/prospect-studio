@@ -25,6 +25,8 @@ mustExist("docs/BASELINE.md");
 mustExist("docs/LIFECYCLE.md");
 mustExist("docs/SORT_OUT.md");
 mustExist("docs/GIT_AND_DEPLOY.md");
+mustExist("docs/AGENT_LOOP.md");
+mustExist("scripts/agent-auto-loop.mjs");
 mustExist("lifecycle/package.json");
 mustExist("lifecycle/src/machine.ts");
 mustExist("graph/package.json");

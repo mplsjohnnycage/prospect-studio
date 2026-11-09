@@ -35,6 +35,7 @@ Implementation agents **must** read [`AGENTS.md`](AGENTS.md) first, then run:
 npm run agent:preflight
 npm run graph -- next --loop loop1
 npm run lifecycle -- loop1-path
+npm run agent:loop -- tick --claim
 ```
 
 Push/merge/deploy policy: [`docs/GIT_AND_DEPLOY.md`](docs/GIT_AND_DEPLOY.md). Agents never merge to `main` or prod-deploy without human OK.
