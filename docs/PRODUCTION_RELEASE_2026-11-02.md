@@ -5,7 +5,7 @@
 - Existing app: Vercel project `prospect-studio`, team `johnnyc`.
 - Source: private `mplsjohnnycage/prospect-studio`; this release is developed on `feat/production-build-leases-20261102`, not a replacement application.
 - Convex development: `gregarious-ibis-329`; Convex production: `rightful-elk-426`. The two databases are separate.
-- Keep Vercel SSO protection, owner-restricted Better Auth, outreach sending disabled, and publication approval requirements.
+- Keep owner-restricted Better Auth, outreach sending disabled, and publication approval requirements. **Vercel SSO is currently off** on `prospect-studio` (older release notes said to keep SSO on); treat re-enabling SSO as optional defense in depth, not as live edge protection.
 - Do not enable automatic email delivery or public demo publication as a side effect of this release.
 
 ## Implemented: exclusive, expiring demo build claims
@@ -28,7 +28,7 @@ This is an additive schema change. Prior concept records require no migration. F
 ## Outstanding production blockers
 
 1. Owner activation and authenticated production CRUD/Firecrawl/concept-build browser tests.
-2. Dependency remediation: Better Auth and Convex adapter have incompatible patched-major constraints; the auth configuration must be migrated and tested together. Keep Vercel SSO enabled meanwhile.
+2. Dependency remediation: Better Auth and Convex adapter have incompatible patched-major constraints; the auth configuration must be migrated and tested together. Vercel SSO is currently **off** (docs previously said keep it enabled); rely on Better Auth and consider re-enabling SSO until remediation lands.
 3. Complete an AI-generated bespoke demo flow; existing sandbox generates and verifies approved static concept templates only.
 4. AgentMail sender/webhook delivery and approval evidence; no real sending yet.
 5. External calendar booking, observability, quotas, backup recovery and verified deploy rollback.
@@ -45,7 +45,7 @@ The GitHub token currently lacks the separate `workflow` scope. GitHub rejected 
 - Vercel `johnnyc` team membership shows a single OWNER, connected to GitHub `mplsjohnnycage`. Earlier PR commits used the different GitHub identity `johnnyc-9164` and Vercel blocked automatic builds. Repository-local Git author identity is now aligned to `mplsjohnnycage` for new commits; historical commits were not rewritten. Confirm a fresh Git-triggered Vercel build before declaring the integration repaired.
 - `/api/health` remains a cheap liveness endpoint; `/api/ready` now performs a real Convex cloud query and returns 503 if the remote data backend is missing or unreachable. No tenant data is returned by the probe.
 - The new Convex `health.ping` query is data-free and is deployed to Convex **development**; it has not been deployed to production.
-- Run `PROSPECT_EXPECT_READY=1 PROSPECT_SMOKE_URL=<APP_URL> node scripts/release-smoke.mjs` to require backend readiness (use the protected Vercel CLI transport for SSO URLs). CI uses `PROSPECT_EXPECT_READY=0` and an intentionally nonfunctional backend to verify fail-closed behavior.
+- Run `PROSPECT_EXPECT_READY=1 PROSPECT_SMOKE_URL=<APP_URL> node scripts/release-smoke.mjs` to require backend readiness. If Vercel SSO is re-enabled, use the protected Vercel CLI transport for SSO URLs; SSO is currently off. CI uses `PROSPECT_EXPECT_READY=0` and an intentionally nonfunctional backend to verify fail-closed behavior.
 
 ## Vercel-native build quality gate
 

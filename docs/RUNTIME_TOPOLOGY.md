@@ -4,7 +4,7 @@ Where each part of Prospect Studio runs. Updated 2026-11-03.
 
 | Role | Where | Notes |
 |---|---|---|
-| App, API routes, cron | Vercel (`prospect-studio`) | Hobby plan: 300 s per request, daily cron only |
+| App, API routes, cron | Vercel (`prospect-studio`) | **Pro** plan (not Hobby). Configured cron is daily (`0 13 * * *`); Pro allows more frequent schedules. Concurrent builds are Pro-tier (up to 500 with on-demand concurrency per Vercel docs)—not Hobby’s 1. SSO currently **off**. |
 | Data, run state, checkpoints | Convex (`rightful-elk-426` prod) | The whole sales loop runs here today |
 | Actor engine | Rivet Cloud, namespace `johnny-cage-4xuq-production-i6cu` | Engine only; it hosts no code |
 | Actors (code) | Vercel, `src/app/api/rivet/[...all]/route.ts` | Serverless pool; off until `RIVET_ENDPOINT` is set |
