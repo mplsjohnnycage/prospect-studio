@@ -82,7 +82,8 @@ Graph (self-contained; does not replace app `package.json`):
 ```bash
 cd graph && npm ci
 npm run graph -- next --loop loop1
-npm run graph -- prompt P0
+npm run graph -- next --loop loop1
+npm run graph -- prompt P1
 ```
 
 ---
@@ -96,7 +97,7 @@ npm run graph -- prompt P0
 - [ ] Agents read `BASELINE.md` → `SORT_OUT.md` → `graph prompt` before coding  
 - [ ] Stale Sprite worktrees labeled freeze (no new commits)  
 
-P0 on the exec graph stays `in_progress` until the AgentOS verify/CI gate is honest-green; that does **not** unblock inventing a second lane.
+Graph **P0 is `done`** (evidence in `graph/state.json`). **P1 is ready** — `npm run graph -- prompt P1`. PR #35 stays draft until CI green; Vercel account block is a human deploy issue. Still **one lane only**.
 
 ---
 
