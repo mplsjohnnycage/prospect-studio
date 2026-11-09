@@ -1,7 +1,7 @@
 {
   "graphId": "prospect-studio-loop1",
   "graphVersion": "1.0.0",
-  "updatedAt": "2026-11-09T20:58:10.579Z",
+  "updatedAt": "2026-11-09T21:01:45.687Z",
   "nodes": {
     "P0": {
       "status": "done",
@@ -53,7 +53,10 @@
       "updatedAt": "2026-11-09T20:58:10.579Z"
     },
     "P8": {
-      "status": "blocked"
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "Design IR round-trip + converge path manual@4/agent@5; R2 artifacts/p8-design/design-ir-design-authff-r5; expectedRevision validator",
+      "updatedAt": "2026-11-09T21:01:45.687Z"
     },
     "P9": {
       "status": "blocked"
