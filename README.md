@@ -37,4 +37,6 @@ npm run graph -- next --loop loop1
 npm run lifecycle -- loop1-path
 ```
 
+Push/merge/deploy policy: [`docs/GIT_AND_DEPLOY.md`](docs/GIT_AND_DEPLOY.md). Agents never merge to `main` or prod-deploy without human OK.
+
 Build lane: PR #35 / `fix/phase0-prospect-reconcile-20261107` / Convex dev only.

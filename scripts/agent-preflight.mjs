@@ -24,6 +24,7 @@ mustExist("AGENTS.md");
 mustExist("docs/BASELINE.md");
 mustExist("docs/LIFECYCLE.md");
 mustExist("docs/SORT_OUT.md");
+mustExist("docs/GIT_AND_DEPLOY.md");
 mustExist("lifecycle/package.json");
 mustExist("lifecycle/src/machine.ts");
 mustExist("graph/package.json");
@@ -35,6 +36,12 @@ if (!agents.includes("Non-negotiable rules")) {
 }
 if (!agents.includes("lifecycle/")) {
   errors.push("AGENTS.md must require lifecycle/ spine");
+}
+if (!agents.includes("GitHub push / merge / deploy")) {
+  errors.push("AGENTS.md missing GitHub push/merge/deploy section");
+}
+if (!/Humans merge|MUST NOT.*merge PR #35/s.test(agents)) {
+  errors.push("AGENTS.md must forbid agents merging #35 / main");
 }
 
 if (existsSync(join(root, "QUARANTINE.md"))) {

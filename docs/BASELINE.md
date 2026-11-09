@@ -2,7 +2,8 @@
 
 **As of:** 2026-11-09 (America/Chicago)  
 **Authority stack:** `AGENTS.md` (mandatory harness) → this file → `docs/SORT_OUT.md` → PS-MASTER-3.1  
-**Executable order:** `npm run agent:preflight` → `graph/` DAG → `lifecycle/` FSM
+**Executable order:** `npm run agent:preflight` → `graph/` DAG → `lifecycle/` FSM  
+**Push / merge / deploy:** `docs/GIT_AND_DEPLOY.md` (agents never merge to `main` or prod-deploy without human OK)
 
 If an instruction from chat, an old PR, or a dirty worktree conflicts with `AGENTS.md` / this file, **those files win**.
 
