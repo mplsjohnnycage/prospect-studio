@@ -1,7 +1,7 @@
 {
   "graphId": "prospect-studio-loop1",
   "graphVersion": "1.0.0",
-  "updatedAt": "2026-11-09T20:09:37.352Z",
+  "updatedAt": "2026-11-09T20:17:11.959Z",
   "nodes": {
     "P0": {
       "status": "done",
@@ -23,7 +23,10 @@
       "updatedAt": "2026-11-09T20:09:37.351Z"
     },
     "P3": {
-      "status": "blocked"
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "SHA=fc2d360 storybook=ui-button/badge/card unit=2/2 screenshots=3 uniqueHashes bucket=prospect-studio-dev keys=comp-ui.button-v1.0.0,comp-ui.badge-v1.0.0,comp-ui.card-v1.0.0",
+      "updatedAt": "2026-11-09T20:17:11.959Z"
     },
     "P4": {
       "status": "blocked"
