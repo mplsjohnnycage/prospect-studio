@@ -1,0 +1,25 @@
+{
+  "graphId": "prospect-studio-loop1",
+  "graphVersion": "1.0.0",
+  "updatedAt": "2026-11-09T17:35:00.000Z",
+  "nodes": {
+    "P0": {
+      "status": "in_progress",
+      "note": "BASELINE.md locked: only wt-prospect-phase0 + PR #35 + Convex dev. AgentOS verify/CI still blocks full P0 exit gate; do not open a second lane."
+    },
+    "P1": { "status": "blocked" },
+    "P2": { "status": "blocked" },
+    "P3": { "status": "blocked" },
+    "P4": { "status": "blocked" },
+    "P5": { "status": "blocked" },
+    "P6": { "status": "blocked" },
+    "P7": { "status": "blocked" },
+    "P8": { "status": "blocked" },
+    "P9": { "status": "blocked" },
+    "P10": { "status": "blocked" },
+    "P11": { "status": "blocked" },
+    "P12": { "status": "skipped", "note": "Loop 1 deferred — no second consumer." },
+    "P13": { "status": "blocked" },
+    "P14": { "status": "blocked" }
+  }
+}

@@ -1,0 +1,427 @@
+{
+  "id": "prospect-studio-loop1",
+  "version": "1.0.0",
+  "spec": "PS-MASTER-3.1",
+  "asOf": "2026-11-09",
+  "defaults": {
+    "convexDev": "gregarious-ibis-329",
+    "convexProd": "rightful-elk-426",
+    "worktree": "/home/sprite/wt-prospect-phase0",
+    "baseSha": "db3056d",
+    "integrationBranch": "fix/phase0-prospect-reconcile-20261107"
+  },
+  "forbidden": [
+    "Write Convex prod rightful-elk-426 without explicit human OK",
+    "Merge dirty rivet-spike-attach or hardening worktree wholesale onto main",
+    "Ship or keep unauthenticated POST /compile",
+    "Treat Port as Loop 1 approval authority",
+    "Invent CommandKind / hash / role matrix outside P1 contracts",
+    "Mark a phase done without exit-gate evidence"
+  ],
+  "nodes": [
+    {
+      "id": "P0",
+      "title": "Truth audit",
+      "dependsOn": [],
+      "loop": "loop1",
+      "goal": "Lock the real base branch, inventory worktrees, and leave a clean documented gap list.",
+      "deliverables": [
+        "Diff main vs rivet-spike-attach vs hardening worktree",
+        "Map routes/tables/packages against PS-MASTER-3.1",
+        "Confirm Convex prod/dev IDs",
+        "Document AgentOS verify hang and remaining gaps"
+      ],
+      "exitGate": "Dev codegen/typecheck/tests documented green or explicitly blocked; no lost modifications; P0 base SHA locked.",
+      "verify": [
+        "git -C $WORKTREE rev-parse HEAD",
+        "git -C $WORKTREE merge-base --is-ancestor $BASE_SHA HEAD",
+        "test -f docs/SORT_OUT.md",
+        "test -f docs/phase0-reconciliation-2026-11-07.md"
+      ],
+      "inputs": ["mplsjohnnycage/prospect-studio", "Fly sprite prospect-studio"],
+      "outputs": ["docs/SORT_OUT.md", "docs/phase0-reconciliation-2026-11-07.md", "locked base SHA"],
+      "agent": {
+        "role": "repo-auditor",
+        "instructions": [
+          "Work only in wt-prospect-phase0 on fix/phase0-prospect-reconcile-20261107.",
+          "Do not deploy or write Convex prod.",
+          "Record evidence paths and SHAs in the claim evidence field when marking done."
+        ],
+        "stopConditions": [
+          "AgentOS npm run verify still hangs without a CI-green alternate proof"
+        ]
+      }
+    },
+    {
+      "id": "P1",
+      "title": "Contracts + state",
+      "dependsOn": ["P0"],
+      "loop": "loop1",
+      "goal": "Close inventable contract holes: CommandKind, hash profile, roles, approvals, lifecycle vocabulary.",
+      "deliverables": [
+        "Auth/permissions matrix",
+        "Command/outbox schemas with closed CommandKind union",
+        "Guarded revisions + approval schemas",
+        "Provider/worker contract package",
+        "Canonical lifecycleStage §15.2 union only"
+      ],
+      "exitGate": "Duplicate/replay/stale-revision/unauthorized test suites pass against Convex dev.",
+      "verify": [
+        "npm test -- --grep 'duplicate|replay|stale|unauthorized' || npm run test:contracts"
+      ],
+      "inputs": ["P0 locked base", "PS-MASTER-3.1 §15–§16"],
+      "outputs": ["typed contracts package", "passing negative auth tests"],
+      "agent": {
+        "role": "contracts-engineer",
+        "instructions": [
+          "Target Convex dev gregarious-ibis-329 only.",
+          "Do not invent scoring weights (P5/P6) or Port write-paths.",
+          "Lifecycle display labels in domain.ts stay read-only projections."
+        ],
+        "stopConditions": [
+          "Any mutation attempted against rightful-elk-426"
+        ]
+      }
+    },
+    {
+      "id": "P2",
+      "title": "Storage",
+      "dependsOn": ["P1"],
+      "loop": "loop1",
+      "goal": "Prove Convex R2 upload/read/provenance on the adopted @convex-dev/r2 component.",
+      "deliverables": [
+        "R2 install/verify on phase0 stack",
+        "Upload/verify flow",
+        "Artifact metadata + provenance",
+        "Signed URLs, version keys, dedupe/restore receipt"
+      ],
+      "exitGate": "Real object upload/read/rights/expiry/dedupe/restore receipt recorded.",
+      "verify": [
+        "npm run test:storage || npm test -- --grep 'r2|artifact|signed'"
+      ],
+      "inputs": ["@convex-dev/r2@0.10.4", "P1 contracts"],
+      "outputs": ["R2 receipts", "artifact metadata schema"],
+      "agent": {
+        "role": "storage-engineer",
+        "instructions": [
+          "Adopt existing phase0 R2 wiring; do not reinstall from dirty hardening tree.",
+          "Every artifact write needs provenance fields."
+        ]
+      }
+    },
+    {
+      "id": "P3",
+      "title": "Component library",
+      "dependsOn": ["P2"],
+      "loop": "loop1",
+      "goal": "Ship an approved React component registry with Storybook stories and Playwright screenshots in R2.",
+      "deliverables": [
+        "React UI package + tokens",
+        "Registry schema",
+        "Storybook base stories",
+        "Playwright screenshot → R2"
+      ],
+      "exitGate": "Approved components have real story screenshot/version/test.",
+      "verify": [
+        "npm run test:components || npx playwright test --grep story"
+      ],
+      "inputs": ["P2 artifact store", "design tokens"],
+      "outputs": ["component registry", "story screenshots in R2"],
+      "agent": {
+        "role": "ui-library-engineer",
+        "instructions": [
+          "No Jev. Visual QA is Playwright screenshots only.",
+          "Do not invent brand photography as verified assets."
+        ]
+      }
+    },
+    {
+      "id": "P4",
+      "title": "Sprite component",
+      "dependsOn": ["P1", "P2"],
+      "loop": "loop1",
+      "parallelOk": true,
+      "goal": "Convex can lease a real Fly Sprite worker, run a job, and recover after wake.",
+      "deliverables": [
+        "Reusable Sprites component",
+        "Worker gateway + bootstrap profiles",
+        "Pool leases, health, checkpoints, callbacks"
+      ],
+      "exitGate": "Convex calls real Sprite, returns authenticated job receipt, recovers after wake.",
+      "verify": [
+        "npm run test:sprites || npm test -- --grep 'sprite|lease|checkpoint'"
+      ],
+      "inputs": ["Fly sprite prospect-studio", "P1 worker contracts", "P2 storage"],
+      "outputs": ["authenticated job receipt", "wake-recovery proof"],
+      "agent": {
+        "role": "runtime-engineer",
+        "instructions": [
+          "Sprites are the computer provider; no E2B.",
+          "Preserve wt-prospect-phase0; do not merge rivet dirty tree."
+        ]
+      }
+    },
+    {
+      "id": "P5",
+      "title": "Discovery",
+      "dependsOn": ["P4"],
+      "loop": "loop1",
+      "goal": "Reproducible Twin Cities extract with honest coverage and Score-1.",
+      "deliverables": [
+        "Overture DuckDB extraction",
+        "R2 versioning + normalization",
+        "Place identity resolver",
+        "Coverage map + Score-1"
+      ],
+      "exitGate": "Reproducible Twin Cities extract and honest duplicate/coverage report.",
+      "verify": [
+        "npm run test:discovery || npm test -- --grep 'overture|coverage|score-1'"
+      ],
+      "inputs": ["P4 sprite workers", "seven-county metro geometry"],
+      "outputs": ["extract artifact", "coverage report"],
+      "agent": {
+        "role": "discovery-engineer",
+        "instructions": [
+          "No city-center proxy as rooftop precision.",
+          "Score weights must be explicit v1 constants checked into repo."
+        ]
+      }
+    },
+    {
+      "id": "P6",
+      "title": "Enrichment",
+      "dependsOn": ["P5"],
+      "loop": "loop1",
+      "goal": "Website/source evidence and Brand DNA for shortlisted prospects with Score-2.",
+      "deliverables": [
+        "Website state + source evidence",
+        "Cheap checks + deep SiteOne/browser audit",
+        "Brand DNA version",
+        "Score-2"
+      ],
+      "exitGate": "20 hand-reviewed A-tier websites; missing-site false negatives accounted for.",
+      "verify": [
+        "npm run test:enrichment || npm test -- --grep 'enrichment|brand-dna|score-2'"
+      ],
+      "inputs": ["P5 places", "browser/SiteOne tooling"],
+      "outputs": ["enrichment receipts", "Brand DNA versions"],
+      "agent": {
+        "role": "enrichment-engineer",
+        "instructions": [
+          "Missing website is a first-class state, not a silent skip.",
+          "Do not fabricate logos or owner portraits."
+        ]
+      }
+    },
+    {
+      "id": "P7",
+      "title": "Visual generation",
+      "dependsOn": ["P3", "P6"],
+      "loop": "loop1",
+      "goal": "Prospect-specific generated visuals with traced inputs/outputs and review.",
+      "deliverables": [
+        "Layout prior retrieval",
+        "Reference bundle",
+        "Image provider adapter + permissions",
+        "Generated images in R2"
+      ],
+      "exitGate": "Real prospect-specific model run with traced inputs/outputs and review.",
+      "verify": [
+        "npm run test:visuals || npm test -- --grep 'visual|image-provider'"
+      ],
+      "inputs": ["P3 registry", "P6 Brand DNA"],
+      "outputs": ["generated image artifacts", "review records"],
+      "agent": {
+        "role": "visual-engineer",
+        "instructions": [
+          "Generated assets stay generated/proposed until reviewed.",
+          "Never present fabricated brand assets as verified."
+        ]
+      }
+    },
+    {
+      "id": "P8",
+      "title": "Design editor",
+      "dependsOn": ["P3", "P7"],
+      "loop": "loop1",
+      "goal": "One versioned Design IR shared by Puck, json-render, and agent proposals.",
+      "deliverables": [
+        "Canonical Design IR",
+        "Puck + json-render adapters",
+        "Patch validator + revision compare",
+        "Agent layout proposal path"
+      ],
+      "exitGate": "Round-trip tests; manual edit + agent proposal converge to one versioned IR.",
+      "verify": [
+        "npm run test:design || npm test -- --grep 'design-ir|puck|json-render'"
+      ],
+      "inputs": ["P3 components", "P7 visuals"],
+      "outputs": ["Design IR schema", "revision history"],
+      "agent": {
+        "role": "design-systems-engineer",
+        "instructions": [
+          "Puck must not authorize deploy/send; it writes proposed versions only.",
+          "Saves use expectedRevision."
+        ]
+      }
+    },
+    {
+      "id": "P9",
+      "title": "Build / render / QA",
+      "dependsOn": ["P4", "P8"],
+      "loop": "loop1",
+      "goal": "Native React preview build on Sprite with deterministic Playwright visual QA.",
+      "deliverables": [
+        "Build Sprite native React pipeline",
+        "Real preview + Storybook refs",
+        "Deterministic visual QA suite",
+        "Responsive/functional QA"
+      ],
+      "exitGate": "Accessible responsive demo meets source/brand and QA requirements.",
+      "verify": [
+        "npm run test:qa || npx playwright test"
+      ],
+      "inputs": ["P4 sprite", "P8 Design IR"],
+      "outputs": ["preview URL/receipt", "QA screenshot set"],
+      "agent": {
+        "role": "build-qa-engineer",
+        "instructions": [
+          "Playwright only for visual QA — no Jev.",
+          "Reject unauthenticated compile endpoints."
+        ]
+      }
+    },
+    {
+      "id": "P10",
+      "title": "Approvals + handoff",
+      "dependsOn": ["P1", "P9"],
+      "loop": "loop1",
+      "goal": "Human approval gates with exact SHA binding and a real source→demo handoff.",
+      "deliverables": [
+        "Separate approval gates",
+        "Exact SHA binding",
+        "Handoff package (Convex catalog; Port optional)",
+        "Deployment adapter"
+      ],
+      "exitGate": "One real approved business completes source→demo handoff; unauthorized paths blocked.",
+      "verify": [
+        "npm run test:approvals || npm test -- --grep 'approval|handoff|unauthorized'"
+      ],
+      "inputs": ["P1 approval schemas", "P9 demo"],
+      "outputs": ["approval receipts", "handoff package"],
+      "agent": {
+        "role": "approvals-engineer",
+        "instructions": [
+          "Convex is the sole Loop 1 decision record.",
+          "LLM tools must not be able to approve or send."
+        ]
+      }
+    },
+    {
+      "id": "P11",
+      "title": "Operator / MCP / desktop",
+      "dependsOn": ["P4", "P10"],
+      "loop": "loop1",
+      "parallelOk": true,
+      "goal": "Same typed command from UI and MCP; desktop viewer controls the same session.",
+      "deliverables": [
+        "Operator surface",
+        "Scoped MCP tools",
+        "Rivet sessions",
+        "Real desktop/noVNC viewer"
+      ],
+      "exitGate": "Same typed command from UI and MCP; headless job works; viewer controls same session.",
+      "verify": [
+        "npm run test:operator || npm test -- --grep 'mcp|operator|novnc'"
+      ],
+      "inputs": ["P4 sessions", "P10 approved actions"],
+      "outputs": ["MCP tool surface", "desktop session proof"],
+      "agent": {
+        "role": "operator-engineer",
+        "instructions": [
+          "Incremental MCP wiring during P4–P9 is allowed; do not declare P11 done early.",
+          "Headless deterministic path must work without the viewer."
+        ]
+      }
+    },
+    {
+      "id": "P12",
+      "title": "Port governance integration",
+      "dependsOn": ["P1", "P10"],
+      "loop": "conditional",
+      "goal": "Optional second-consumer Port sync — deferred for Loop 1 unless a real second consumer appears.",
+      "deliverables": [
+        "Port Convex component",
+        "Blueprints + REST/webhook sync",
+        "Governed action + reconciliation"
+      ],
+      "exitGate": "Provider replay/stale approval cannot duplicate business transition.",
+      "verify": [
+        "npm run test:port || npm test -- --grep 'port|governance'"
+      ],
+      "inputs": ["P1 contracts", "P10 handoff", "demonstrated second consumer"],
+      "outputs": ["Port sync receipts"],
+      "agent": {
+        "role": "governance-engineer",
+        "instructions": [
+          "Skip for Loop 1 unless a second consumer is demonstrated.",
+          "Port must never become an alternate approval authority."
+        ],
+        "stopConditions": [
+          "No demonstrated second consumer — leave node skipped"
+        ]
+      }
+    },
+    {
+      "id": "P13",
+      "title": "Outreach / commercial",
+      "dependsOn": ["P10", "P11", "P12"],
+      "loop": "later",
+      "goal": "Approved outbound message and commercial handoff with independent receipts.",
+      "deliverables": [
+        "Drafts + suppression + exact-send gate",
+        "Inbox/reply/booking/conversion",
+        "Payment/Factory provision"
+      ],
+      "exitGate": "End-to-end approved message/verified response/production handoff with independent receipts.",
+      "verify": [
+        "npm run test:outreach || npm test -- --grep 'outreach|send-gate'"
+      ],
+      "inputs": ["P10 approvals", "P11 operator", "P12 if enabled"],
+      "outputs": ["send receipts", "conversion records"],
+      "agent": {
+        "role": "outreach-engineer",
+        "instructions": [
+          "Exact-send gate is mandatory; no silent sends.",
+          "Out of Loop 1 scope until P10–P12 gates are real."
+        ]
+      }
+    },
+    {
+      "id": "P14",
+      "title": "Scale and operate",
+      "dependsOn": ["P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12", "P13"],
+      "loop": "later",
+      "goal": "Measured capacity, SLO, cost, and recovery — not aspirational.",
+      "deliverables": [
+        "Provider benchmarking",
+        "Worker pool scale + cost tuning",
+        "CI/alerts + chaos/recovery",
+        "Disaster restore"
+      ],
+      "exitGate": "Capacity/SLO/cost measured and repeatable.",
+      "verify": [
+        "npm run test:ops || npm test -- --grep 'slo|chaos|restore'"
+      ],
+      "inputs": ["Verified P5–P13"],
+      "outputs": ["capacity report", "restore drill receipt"],
+      "agent": {
+        "role": "ops-engineer",
+        "instructions": [
+          "Do not claim scale wins without measured receipts.",
+          "Run only after upstream phases are done, not in parallel speculation."
+        ]
+      }
+    }
+  ]
+}
