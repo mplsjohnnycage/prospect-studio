@@ -5,7 +5,7 @@
 - Existing app: Vercel project `prospect-studio`, team `johnnyc`.
 - Source: private `mplsjohnnycage/prospect-studio`; this release is developed on `feat/production-build-leases-20261102`, not a replacement application.
 - Convex development: `gregarious-ibis-329`; Convex production: `rightful-elk-426`. The two databases are separate.
-- Keep Vercel SSO protection, owner-restricted Better Auth, outreach sending disabled, and publication approval requirements.
+- Prefer Vercel SSO (or password) as defense in depth — **currently off** as of 2026-11-09; keep owner-restricted Better Auth, outreach sending disabled, and publication approval requirements.
 - Do not enable automatic email delivery or public demo publication as a side effect of this release.
 
 ## Implemented: exclusive, expiring demo build claims
@@ -28,7 +28,7 @@ This is an additive schema change. Prior concept records require no migration. F
 ## Outstanding production blockers
 
 1. Owner activation and authenticated production CRUD/Firecrawl/concept-build browser tests.
-2. Dependency remediation: Better Auth and Convex adapter have incompatible patched-major constraints; the auth configuration must be migrated and tested together. Keep Vercel SSO enabled meanwhile.
+2. Dependency remediation: Better Auth and Convex adapter have incompatible patched-major constraints; the auth configuration must be migrated and tested together. Re-enable Vercel SSO (or password) meanwhile if edge protection is desired (currently off).
 3. Complete an AI-generated bespoke demo flow; existing sandbox generates and verifies approved static concept templates only.
 4. AgentMail sender/webhook delivery and approval evidence; no real sending yet.
 5. External calendar booking, observability, quotas, backup recovery and verified deploy rollback.
