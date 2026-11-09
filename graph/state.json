@@ -1,7 +1,7 @@
 {
   "graphId": "prospect-studio-loop1",
   "graphVersion": "1.0.0",
-  "updatedAt": "2026-11-09T19:22:22.805Z",
+  "updatedAt": "2026-11-09T20:09:37.352Z",
   "nodes": {
     "P0": {
       "status": "done",
@@ -17,9 +17,10 @@
       "updatedAt": "2026-11-09T19:19:43.542Z"
     },
     "P2": {
-      "status": "in_progress",
+      "status": "done",
       "agent": "auto-loop",
-      "updatedAt": "2026-11-09T19:22:22.805Z"
+      "evidence": "SHA=564e1b0 convexDev=gregarious-ibis-329 bucket=prospect-studio-dev artifact=p2-verify-clean ops=upload+read+dedupe+expiry+rights+restore objectKey=artifacts/p2-storage-proof/p2-verify-clean/v2/1e9deaf4af7956de unit=6/6 typecheck=pass",
+      "updatedAt": "2026-11-09T20:09:37.351Z"
     },
     "P3": {
       "status": "blocked"
