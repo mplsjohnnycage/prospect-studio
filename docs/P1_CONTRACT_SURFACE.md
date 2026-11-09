@@ -71,3 +71,14 @@ Fragments only (`domain.test.ts`, auth enrollment, build-lease, lifecycle engine
 - Forbidden: invent CommandKind / hash / role matrix **outside** P1.  
 - Forbidden: prod Convex writes; Port as Loop-1 authority; second FSM.  
 - Scoring weights = P5/P6; do not smuggle under “contracts.”
+
+
+## Implementation status (auto-loop)
+
+Landed on phase0:
+- `src/lib/contracts/*` — closed CommandKind, envelope/outbox types, revision OCC, auth matrix, approvals, §15.2 stages + UI projection
+- `convex/schema.ts` — `outbox` + `approvals` tables
+- `npm run test:contracts` — duplicate/replay/stale/unauthorized suites green
+- `domain.ts` marked display-only projection
+
+Still follow-on: migrate `prospects.stage` mutations from 8 UI labels to persisted `lifecycleStage` using contracts; wire `prospects.execute` to envelope/outbox.

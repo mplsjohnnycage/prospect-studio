@@ -1,3 +1,4 @@
+/** @deprecated authority — UI display projection only. Canonical stages/commands: src/lib/contracts (P1). */
 export const stages = ["Discover","Qualify","Extract","Design","Demo","Outreach","Convert","Produce"] as const;
 export type Stage = (typeof stages)[number];
 export type ProspectStatus = "queued" | "running" | "needs_approval" | "paused" | "blocked" | "succeeded" | "failed";

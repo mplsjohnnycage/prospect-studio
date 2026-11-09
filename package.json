@@ -7,7 +7,7 @@
     "build": "npm run verify && next build --webpack && node scripts/check-built-styles.mjs",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --import tsx --test --test-concurrency=4 src/lib/*.test.ts",
+    "test:unit": "node --import tsx --test --test-concurrency=4 src/lib/*.test.ts src/lib/contracts/*.test.ts",
     "agentos:smoke": "node --import tsx scripts/agentos-smoke.ts",
     "agentos:actor-check": "node --import tsx scripts/agentos-actor-test.ts",
     "pi:readiness": "node --import tsx scripts/pi-durable-readiness.mts",
@@ -17,7 +17,8 @@
     "agent:preflight": "node scripts/agent-preflight.mjs",
     "graph": "npm --prefix graph run graph --",
     "lifecycle": "npm --prefix lifecycle run lifecycle --",
-    "agent:loop": "node scripts/agent-auto-loop.mjs"
+    "agent:loop": "node scripts/agent-auto-loop.mjs",
+    "test:contracts": "node --import tsx --test --test-concurrency=4 src/lib/contracts/*.test.ts"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",
