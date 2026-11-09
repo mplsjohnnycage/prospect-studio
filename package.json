@@ -28,7 +28,8 @@
     "test:enrichment": "node --import tsx --test --test-concurrency=4 src/lib/enrichment/*.test.ts && node scripts/prove-enrichment.mjs",
     "test:visuals": "node --import tsx --test --test-concurrency=4 src/lib/visuals/*.test.ts && node scripts/prove-visuals.mjs",
     "test:design": "node --import tsx --test --test-concurrency=4 src/lib/design/*.test.ts && node scripts/prove-design-ir.mjs",
-    "test:qa": "node --import tsx --test --test-concurrency=4 src/lib/siteqa/*.test.ts && node scripts/prove-build-qa.mjs"
+    "test:qa": "node --import tsx --test --test-concurrency=4 src/lib/siteqa/*.test.ts && node scripts/prove-build-qa.mjs",
+    "test:approvals": "node --import tsx --test --test-concurrency=4 src/lib/handoff/*.test.ts src/lib/contracts/*.test.ts && node scripts/prove-handoff.mjs"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",
