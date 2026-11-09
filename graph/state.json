@@ -1,7 +1,7 @@
 {
   "graphId": "prospect-studio-loop1",
   "graphVersion": "1.0.0",
-  "updatedAt": "2026-11-09T21:06:07.838Z",
+  "updatedAt": "2026-11-09T21:17:04.130Z",
   "nodes": {
     "P0": {
       "status": "done",
@@ -71,9 +71,10 @@
       "updatedAt": "2026-11-09T21:05:34.763Z"
     },
     "P11": {
-      "status": "in_progress",
+      "status": "done",
       "agent": "auto-loop",
-      "updatedAt": "2026-11-09T21:06:07.838Z"
+      "evidence": "SHA=ac09391 UI/MCP fingerprint parity; headless job ok; noVNC:6080/x11vnc:5900 same session sess_p11_prove; R2 artifacts/p11-operator/operator-session-sess_p11_prove-2b15dc2ddb67; test:operator 6/6; SPRITES_TOKEN refreshed on gregarious-ibis-329",
+      "updatedAt": "2026-11-09T21:17:04.129Z"
     },
     "P12": {
       "status": "skipped",
