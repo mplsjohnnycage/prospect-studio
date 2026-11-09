@@ -14,7 +14,7 @@ If an instruction from chat, an old PR, or a dirty worktree conflicts with `AGEN
 | Role | Value |
 |---|---|
 | Prod-matching base | GitHub `main` @ `db3056d` |
-| Integration branch | `fix/phase0-prospect-reconcile-20261107` @ `cd8def9` |
+| Integration branch | `fix/phase0-prospect-reconcile-20261107` @ `1f69612` |
 | Active PR | **#35 only** (draft until CI green) |
 | Sprite worktree | `/home/sprite/wt-prospect-phase0` on Sprite `prospect-studio` |
 | Convex write target | **dev only** `gregarious-ibis-329` |
