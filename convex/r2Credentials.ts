@@ -17,7 +17,6 @@ async function readSecret(
   const result = await secrets.get(ctx, {
     namespace: R2_NAMESPACE,
     name,
-    now: Date.now(),
   });
   return result.ok ? result.value : null;
 }
@@ -111,7 +110,6 @@ export const r2CredentialStatus = internalQuery({
       const result = await secrets.get(ctx, {
         namespace: R2_NAMESPACE,
         name,
-        now: Date.now(),
       });
       if (result.ok) present.push(name);
       else missing.push(name);
