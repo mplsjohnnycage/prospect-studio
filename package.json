@@ -18,7 +18,8 @@
     "graph": "npm --prefix graph run graph --",
     "lifecycle": "npm --prefix lifecycle run lifecycle --",
     "agent:loop": "node scripts/agent-auto-loop.mjs",
-    "test:contracts": "node --import tsx --test --test-concurrency=4 src/lib/contracts/*.test.ts"
+    "test:contracts": "node --import tsx --test --test-concurrency=4 src/lib/contracts/*.test.ts",
+    "test:storage": "node --import tsx --test --test-concurrency=4 src/lib/storage/*.test.ts"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",

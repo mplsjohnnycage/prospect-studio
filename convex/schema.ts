@@ -69,5 +69,28 @@ export default defineSchema({
    rationale: v.optional(v.string()),
    createdAt: v.number(),
  }).index("by_subject", ["subjectType", "subjectId"]).index("by_owner_time", ["ownerId", "createdAt"]),
+ // P2 storage: artifact metadata + provenance (R2 object refs live in component + this table)
+ artifacts: defineTable({
+   ownerId: v.string(),
+   artifactId: v.string(),
+   version: v.number(),
+   objectKey: v.string(),
+   bucket: v.string(),
+   contentHash: v.string(),
+   contentType: v.string(),
+   byteLength: v.number(),
+   kind: v.string(),
+   source: v.string(),
+   actorId: v.string(),
+   correlationId: v.optional(v.string()),
+   subjectType: v.optional(v.string()),
+   subjectId: v.optional(v.string()),
+   expiresAt: v.optional(v.number()),
+   deletedAt: v.optional(v.number()),
+   restoredFrom: v.optional(v.string()),
+   previousObjectKey: v.optional(v.string()),
+   createdAt: v.number(),
+   updatedAt: v.number(),
+ }).index("by_owner_artifact", ["ownerId", "artifactId"]).index("by_content_hash", ["ownerId", "contentHash"]).index("by_object_key", ["objectKey"]),
 
 });

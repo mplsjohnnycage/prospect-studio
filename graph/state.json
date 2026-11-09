@@ -1,7 +1,7 @@
 {
   "graphId": "prospect-studio-loop1",
   "graphVersion": "1.0.0",
-  "updatedAt": "2026-11-09T19:19:43.543Z",
+  "updatedAt": "2026-11-09T19:22:22.805Z",
   "nodes": {
     "P0": {
       "status": "done",
@@ -17,7 +17,9 @@
       "updatedAt": "2026-11-09T19:19:43.542Z"
     },
     "P2": {
-      "status": "blocked"
+      "status": "in_progress",
+      "agent": "auto-loop",
+      "updatedAt": "2026-11-09T19:22:22.805Z"
     },
     "P3": {
       "status": "blocked"

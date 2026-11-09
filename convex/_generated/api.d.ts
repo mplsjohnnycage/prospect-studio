@@ -40,6 +40,8 @@ import type * as r2Credentials from "../r2Credentials.js";
 import type * as research from "../research.js";
 import type * as sales from "../sales.js";
 import type * as secrets from "../secrets.js";
+import type * as storage from "../storage.js";
+import type * as storageActions from "../storageActions.js";
 import type * as suppressions from "../suppressions.js";
 
 import type {
@@ -81,6 +83,8 @@ declare const fullApi: ApiFromModules<{
   research: typeof research;
   sales: typeof sales;
   secrets: typeof secrets;
+  storage: typeof storage;
+  storageActions: typeof storageActions;
   suppressions: typeof suppressions;
 }>;
 
