@@ -416,8 +416,20 @@ export const AGENT_TOOLS:Record<string,AgentTool>={
   description:"Dispatch a Prospect Studio CommandKind envelope. Identical typed command path as the in-app operator UI (P11).",
   args:{kind:v.string(),commandId:v.string(),idempotencyKey:v.string(),correlationId:v.string(),expectedRevision:v.number(),subjectType:v.union(v.literal("prospect"),v.literal("concept"),v.literal("outreach"),v.literal("artifact"),v.literal("place")),subjectId:v.string(),payload:v.optional(v.any())},write:true,
   run:async(_ctx,ownerId,a)=>{
-   if(!isCommandKind(String(a.kind)))throw fail("Unknown CommandKind");
-   const result=runTypedCommandFromMcp({role:"agent",actorId:ownerId},{kind:a.kind as any,commandId:String(a.commandId),idempotencyKey:String(a.idempotencyKey),correlationId:String(a.correlationId),expectedRevision:Number(a.expectedRevision),subjectType:a.subjectType as any,subjectId:String(a.subjectId),payload:(a.payload as Record<string,unknown>|undefined)});
+   const kindRaw=String(a.kind);
+   if(!isCommandKind(kindRaw))throw fail("Unknown CommandKind");
+   const subjectType=a.subjectType as "prospect"|"concept"|"outreach"|"artifact"|"place";
+   const payload=a.payload===undefined?undefined:(a.payload as Record<string,unknown>);
+   const result=runTypedCommandFromMcp({role:"agent",actorId:ownerId},{
+    kind:kindRaw,
+    commandId:String(a.commandId),
+    idempotencyKey:String(a.idempotencyKey),
+    correlationId:String(a.correlationId),
+    expectedRevision:Number(a.expectedRevision),
+    subjectType,
+    subjectId:String(a.subjectId),
+    payload,
+   });
    return {channel:result.channel,fingerprint:result.fingerprint,receipt:result.receipt,duplicate:result.duplicate};
   },
  }),
