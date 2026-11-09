@@ -1,7 +1,7 @@
 {
   "graphId": "prospect-studio-loop1",
   "graphVersion": "1.0.0",
-  "updatedAt": "2026-11-09T21:01:45.687Z",
+  "updatedAt": "2026-11-09T21:04:06.341Z",
   "nodes": {
     "P0": {
       "status": "done",
@@ -59,7 +59,10 @@
       "updatedAt": "2026-11-09T21:01:45.687Z"
     },
     "P9": {
-      "status": "blocked"
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "Design IR HTML preview + Playwright desktop/mobile screenshots; R2 qa-report-build-authff-r2 + viewport shots; qa.v1 checklist green",
+      "updatedAt": "2026-11-09T21:04:06.340Z"
     },
     "P10": {
       "status": "blocked"
