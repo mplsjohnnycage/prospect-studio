@@ -108,6 +108,12 @@ P0 on the exec graph stays `in_progress` until the AgentOS verify/CI gate is hon
 
 ---
 
-## 7. One-sentence rule
+## 7. Spine + slots (why the FSM matters)
 
-**One Sprite worktree, one PR, one Convex dev deployment, one Zod graph — everything else is quarantine.**
+The **lifecycle state machine** (`lifecycle/`, PS-MASTER-3.1 §15.2) is the only business spine. Everything else **slots in** as an adapter that produces evidence/receipts for a legal transition — it does not own stage.
+
+Agents implement a slot by: emit allowed `command` → collect `requiredEvidence` → Convex reducer runs `canTransition` → commit. If it does not map to a legal edge, it does not ship.
+
+## 8. One-sentence rule
+
+**One lifecycle spine, one Sprite worktree, one PR, one Convex dev — adapters slot in; nothing else owns stage.**

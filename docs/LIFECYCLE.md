@@ -2,6 +2,8 @@
 
 **Authority:** Convex only · **Spec:** PS-MASTER-3.1 §15.2 · **Code:** `lifecycle/` (Zod)
 
+This machine is the **spine**. Discovery, enrichment, ImageGen, Puck, Playwright, Rivet, R2, MCP, and Vercel are **slots**: they produce receipts that justify a legal edge. They do not define their own prospect stage vocabulary.
+
 ## Loop 1 (acceptance ends at Handoff)
 
 ```
