@@ -1,7 +1,7 @@
 {
   "graphId": "prospect-studio-loop1",
   "graphVersion": "1.0.0",
-  "updatedAt": "2026-11-09T19:15:31.456Z",
+  "updatedAt": "2026-11-09T19:19:43.543Z",
   "nodes": {
     "P0": {
       "status": "done",
@@ -11,9 +11,10 @@
       "updatedAt": "2026-11-09T18:27:40.296Z"
     },
     "P1": {
-      "status": "in_progress",
+      "status": "done",
       "agent": "auto-loop",
-      "updatedAt": "2026-11-09T19:15:31.456Z"
+      "evidence": "sha=df9be86f2e7539061cfad92db332f2ca1a810a81 test:contracts=9/9 pass (duplicate,replay,stale,unauthorized) unit=126/126 typecheck=0 outbox+approvals schema landed contracts=src/lib/contracts domain=display-only convexDev=gregarious-ibis-329",
+      "updatedAt": "2026-11-09T19:19:43.542Z"
     },
     "P2": {
       "status": "blocked"
