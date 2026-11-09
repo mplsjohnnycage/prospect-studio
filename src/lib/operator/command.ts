@@ -1,6 +1,6 @@
 /** Typed command dispatch shared by UI, MCP, and headless channels. */
 
-import { createHash } from "node:crypto";
+import { sha256Hex } from "./hash";
 import {
   assertCanCommand,
   type AuthActor,
@@ -42,23 +42,21 @@ export function commandFingerprint(
   envelope: CommandEnvelope,
   receipt: CommandReceipt,
 ): string {
-  return createHash("sha256")
-    .update(
-      JSON.stringify({
-        kind: envelope.kind,
-        commandId: envelope.commandId,
-        idempotencyKey: envelope.idempotencyKey,
-        correlationId: envelope.correlationId,
-        expectedRevision: envelope.expectedRevision,
-        subjectType: envelope.subjectType,
-        subjectId: envelope.subjectId,
-        payload: envelope.payload ?? null,
-        result: receipt.result,
-        ok: receipt.ok,
-        subjectRevisionAfter: receipt.subjectRevisionAfter ?? null,
-      }),
-    )
-    .digest("hex");
+  return sha256Hex(
+    JSON.stringify({
+      kind: envelope.kind,
+      commandId: envelope.commandId,
+      idempotencyKey: envelope.idempotencyKey,
+      correlationId: envelope.correlationId,
+      expectedRevision: envelope.expectedRevision,
+      subjectType: envelope.subjectType,
+      subjectId: envelope.subjectId,
+      payload: envelope.payload ?? null,
+      result: receipt.result,
+      ok: receipt.ok,
+      subjectRevisionAfter: receipt.subjectRevisionAfter ?? null,
+    }),
+  );
 }
 
 function applyCommand(envelope: CommandEnvelope): CommandReceipt {

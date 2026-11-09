@@ -1,6 +1,6 @@
 /** Rivet + desktop/noVNC session binding for operator control. */
 
-import { createHash, randomUUID } from "node:crypto";
+import { randomId, sha256Hex } from "./hash";
 import {
   assertCanControlDesktop,
   type AuthActor,
@@ -52,7 +52,7 @@ export function openOperatorSession(args: {
   sessionId?: string;
   now?: number;
 }): OperatorSession {
-  const sessionId = args.sessionId ?? `sess_${randomUUID()}`;
+  const sessionId = args.sessionId ?? randomId("sess");
   return {
     sessionId,
     rivetActorKey: args.rivetActorKey ?? `prospect-operator:${sessionId}`,
@@ -74,10 +74,7 @@ export function attachDesktopViewer(
   const url = ports.url ?? DEFAULT_NOVNC.url;
   const vncPort = ports.vncPort ?? DEFAULT_NOVNC.vncPort;
   const websockifyPort = ports.websockifyPort ?? DEFAULT_NOVNC.websockifyPort;
-  const controlToken = createHash("sha256")
-    .update(`${session.sessionId}:viewer:${actor.actorId}`)
-    .digest("hex")
-    .slice(0, 32);
+  const controlToken = sha256Hex(`${session.sessionId}:viewer:${actor.actorId}`).slice(0, 32);
   return {
     ...session,
     status: session.status === "open" ? "running" : session.status,
@@ -129,12 +126,12 @@ export function runHeadlessJob(
   if (session.status === "closed") throw new Error("session closed");
   const now = args.now ?? Date.now();
   const job: HeadlessJob = {
-    jobId: args.jobId ?? `job_${randomUUID()}`,
+    jobId: args.jobId ?? randomId("job"),
     sessionId: session.sessionId,
     command: args.command,
     status: "completed",
     exitCode: args.exitCode ?? 0,
-    stdoutHash: createHash("sha256").update(args.stdout).digest("hex").slice(0, 16),
+    stdoutHash: sha256Hex(args.stdout).slice(0, 16),
     startedAt: now,
     finishedAt: now,
   };
