@@ -26,3 +26,18 @@ node --import tsx --test src/lib/*.test.ts
 
 ## API
 `GET /api/health`; `GET/POST /api/prospects`; `GET/POST /api/prospects/:id`; `GET /api/activity`; `GET /api/actor-status`; `GET /api/providers`; `GET /api/mail`; `POST /api/research`; `GET /api/geo?lat=45&lon=-93&km=20`.
+
+## Agent harness (mandatory)
+
+Implementation agents **must** read [`AGENTS.md`](AGENTS.md) first, then run:
+
+```bash
+npm run agent:preflight
+npm run graph -- next --loop loop1
+npm run lifecycle -- loop1-path
+npm run agent:loop -- tick --claim
+```
+
+Push/merge/deploy policy: [`docs/GIT_AND_DEPLOY.md`](docs/GIT_AND_DEPLOY.md). Agents never merge to `main` or prod-deploy without human OK.
+
+Build lane: PR #35 / `fix/phase0-prospect-reconcile-20261107` / Convex dev only.

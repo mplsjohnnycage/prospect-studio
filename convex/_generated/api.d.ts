@@ -35,8 +35,15 @@ import type * as places from "../places.js";
 import type * as pricing from "../pricing.js";
 import type * as production from "../production.js";
 import type * as prospects from "../prospects.js";
+import type * as r2 from "../r2.js";
+import type * as r2Credentials from "../r2Credentials.js";
 import type * as research from "../research.js";
 import type * as sales from "../sales.js";
+import type * as secrets from "../secrets.js";
+import type * as sprites from "../sprites.js";
+import type * as spritesActions from "../spritesActions.js";
+import type * as storage from "../storage.js";
+import type * as storageActions from "../storageActions.js";
 import type * as suppressions from "../suppressions.js";
 
 import type {
@@ -73,8 +80,15 @@ declare const fullApi: ApiFromModules<{
   pricing: typeof pricing;
   production: typeof production;
   prospects: typeof prospects;
+  r2: typeof r2;
+  r2Credentials: typeof r2Credentials;
   research: typeof research;
   sales: typeof sales;
+  secrets: typeof secrets;
+  sprites: typeof sprites;
+  spritesActions: typeof spritesActions;
+  storage: typeof storage;
+  storageActions: typeof storageActions;
   suppressions: typeof suppressions;
 }>;
 
@@ -115,4 +129,7 @@ export declare const components: {
   agentmail: import("@agentmail/convex/_generated/component.js").ComponentApi<"agentmail">;
   researchPool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"researchPool">;
   mcp: import("@convex-dev/mcp/_generated/component.js").ComponentApi<"mcp">;
+  workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
+  r2: import("@convex-dev/r2/_generated/component.js").ComponentApi<"r2">;
+  secretStore: import("convex-secret-store/_generated/component.js").ComponentApi<"secretStore">;
 };

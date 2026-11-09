@@ -1,0 +1,90 @@
+{
+  "graphId": "prospect-studio-loop1",
+  "graphVersion": "1.0.0",
+  "updatedAt": "2026-11-09T21:17:04.130Z",
+  "nodes": {
+    "P0": {
+      "status": "done",
+      "note": "BASELINE.md locked: only wt-prospect-phase0 + PR #35 + Convex dev. AgentOS verify/CI still blocks full P0 exit gate; do not open a second lane.",
+      "agent": "p0-exit-gate-auditor",
+      "evidence": "wt=/home/sprite/wt-prospect-phase0 branch=fix/phase0-prospect-reconcile-20261107 HEAD=d85474441bf21d668ca21c678a3227db185a8d6f tip=d854744 base=db3056d ancestor=yes SORT_OUT+phase0-recon+P0_GAP_MATRIX+P1_CONTRACT_SURFACE=present preflight=ok codegen=0 typecheck=0 test:unit=117/117 test:convex=8/8 lint=0 verify=NOT_RUN(known AgentOS hang; pieces green) convexDev=gregarious-ibis-329 convexProd=rightful-elk-426(read-only) quarantine=complete PR35=draft vercel=account-blocked merge=human-only",
+      "updatedAt": "2026-11-09T18:27:40.296Z"
+    },
+    "P1": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "sha=df9be86f2e7539061cfad92db332f2ca1a810a81 test:contracts=9/9 pass (duplicate,replay,stale,unauthorized) unit=126/126 typecheck=0 outbox+approvals schema landed contracts=src/lib/contracts domain=display-only convexDev=gregarious-ibis-329",
+      "updatedAt": "2026-11-09T19:19:43.542Z"
+    },
+    "P2": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "SHA=564e1b0 convexDev=gregarious-ibis-329 bucket=prospect-studio-dev artifact=p2-verify-clean ops=upload+read+dedupe+expiry+rights+restore objectKey=artifacts/p2-storage-proof/p2-verify-clean/v2/1e9deaf4af7956de unit=6/6 typecheck=pass",
+      "updatedAt": "2026-11-09T20:09:37.351Z"
+    },
+    "P3": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "SHA=fc2d360 storybook=ui-button/badge/card unit=2/2 screenshots=3 uniqueHashes bucket=prospect-studio-dev keys=comp-ui.button-v1.0.0,comp-ui.badge-v1.0.0,comp-ui.card-v1.0.0",
+      "updatedAt": "2026-11-09T20:17:11.959Z"
+    },
+    "P4": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "SHA=9ceddbd sprite=prospect-studio recovered=true woke=true auth=true unit=2/2 typecheck=pass ms~5s hash=1fb5a499eb8d81bc",
+      "updatedAt": "2026-11-09T20:28:35.740Z"
+    },
+    "P5": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "Overture 2026-10-21.0 Twin Cities extract: 195 unique/200 input, R2 artifacts/p5-discovery/overture-tc-2026-11-09/v1/fb6470f3b40b1bf2, score1 mean 0.8377, duckdb S3 anonymous; lockfile synced for npm ci; tsconfig allowImportingTsExtensions; SPRITES_TOKEN refreshed",
+      "updatedAt": "2026-11-09T20:42:43.393Z"
+    },
+    "P6": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "20 hand-reviewed sites + 7 missing-site accounted; R2 artifacts/p6-enrichment/enrichment-tc-2026-11-09/v1/014a2da174b60008; score2.v1 Brand DNA cheap-check; CI prior green 42695640638",
+      "updatedAt": "2026-11-09T20:51:24.570Z"
+    },
+    "P7": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "Prospect-specific Gemini run (gemini-flash-lite-latest SVG fallback after imagen quota); traced I/O; R2 visual-hero-p7-demo-authentic-ff + visual-trace; status generated_proposed",
+      "updatedAt": "2026-11-09T20:58:10.579Z"
+    },
+    "P8": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "Design IR round-trip + converge path manual@4/agent@5; R2 artifacts/p8-design/design-ir-design-authff-r5; expectedRevision validator",
+      "updatedAt": "2026-11-09T21:01:45.687Z"
+    },
+    "P9": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "Design IR HTML preview + Playwright desktop/mobile screenshots; R2 qa-report-build-authff-r2 + viewport shots; qa.v1 checklist green",
+      "updatedAt": "2026-11-09T21:04:06.340Z"
+    },
+    "P10": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "Authentic Form & Function SHA-bound handoff approved; agent path blocked; R2 artifacts/p10-handoff/handoff-p7-demo-authentic-ff-3629e913941f",
+      "updatedAt": "2026-11-09T21:05:34.763Z"
+    },
+    "P11": {
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "SHA=ac09391 UI/MCP fingerprint parity; headless job ok; noVNC:6080/x11vnc:5900 same session sess_p11_prove; R2 artifacts/p11-operator/operator-session-sess_p11_prove-2b15dc2ddb67; test:operator 6/6; SPRITES_TOKEN refreshed on gregarious-ibis-329",
+      "updatedAt": "2026-11-09T21:17:04.129Z"
+    },
+    "P12": {
+      "status": "skipped",
+      "note": "Loop 1 deferred — no second consumer."
+    },
+    "P13": {
+      "status": "blocked"
+    },
+    "P14": {
+      "status": "blocked"
+    }
+  }
+}
