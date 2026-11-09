@@ -1,10 +1,10 @@
 # Prospect Studio — agent-ready baseline
 
 **As of:** 2026-11-09 (America/Chicago)  
-**Authority:** this file + `docs/SORT_OUT.md` + `docs/spec/PROSPECT_STUDIO_MASTER_SPEC_v3_2026-11-09.md` (PS-MASTER-3.1)  
-**Executable order:** `graph/` (Zod DAG)
+**Authority stack:** `AGENTS.md` (mandatory harness) → this file → `docs/SORT_OUT.md` → PS-MASTER-3.1  
+**Executable order:** `npm run agent:preflight` → `graph/` DAG → `lifecycle/` FSM
 
-If an instruction from chat, an old PR, or a dirty worktree conflicts with this file, **this file wins**.
+If an instruction from chat, an old PR, or a dirty worktree conflicts with `AGENTS.md` / this file, **those files win**.
 
 ---
 
@@ -108,6 +108,21 @@ P0 on the exec graph stays `in_progress` until the AgentOS verify/CI gate is hon
 
 ---
 
-## 7. One-sentence rule
+## 7. Spine + slots (why the FSM matters)
 
-**One Sprite worktree, one PR, one Convex dev deployment, one Zod graph — everything else is quarantine.**
+The **lifecycle state machine** (`lifecycle/`, PS-MASTER-3.1 §15.2) is the only business spine. Everything else **slots in** as an adapter that produces evidence/receipts for a legal transition — it does not own stage:
+
+| Slot | Adapter role | Must never |
+|---|---|---|
+| Convex | Commit stage + commands + outbox | Share stage authority |
+| R2 | Store bytes; return hash/refs | Decide stage |
+| Sprite + embedded DuckDB | Run extract/build/QA jobs | Host SoT or advance stage alone |
+| Rivet | Live agent session | Duplicate business FSM |
+| Vercel / UI / MCP | Submit same typed commands | Shadow pipeline |
+| Port / Surreal / etc. | Deferred / non-authoritative | Become second ledger |
+
+Agents implement a slot by: emit allowed `command` → collect `requiredEvidence` → call Convex reducer that runs `canTransition` → commit. If it doesn't map to a legal edge, it doesn't ship.
+
+## 8. One-sentence rule
+
+**One lifecycle spine, one Sprite worktree, one PR, one Convex dev — adapters slot in; nothing else owns stage.**

@@ -13,7 +13,10 @@
     "pi:readiness": "node --import tsx scripts/pi-durable-readiness.mts",
     "verify": "npm run test:unit && npm run test:convex && npm run lint && npm run typecheck",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
-    "test:convex": "vitest run"
+    "test:convex": "vitest run",
+    "agent:preflight": "node scripts/agent-preflight.mjs",
+    "graph": "npm --prefix graph run graph --",
+    "lifecycle": "npm --prefix lifecycle run lifecycle --"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",
