@@ -169,3 +169,49 @@ Nested packages live in `graph/` and `lifecycle/` so they never replace the Next
 ## 7. Loop-1 north star
 
 One real Twin Cities business: source → enrich → qualify → gated generation → Design IR → Sprite build → Playwright QA → exact-artifact approval → **Handoff**, with durable Convex receipts. Outreach/production are later branches after `Handoff`.
+
+---
+
+## 8. GitHub push / merge / deploy (mandatory)
+
+Detail: [`docs/GIT_AND_DEPLOY.md`](docs/GIT_AND_DEPLOY.md). GitHub branch protection is **not** enabled on this private repo — **these rules still bind**.
+
+### Push
+
+| Allowed | Forbidden |
+|---|---|
+| Push to phase0 (`fix/phase0-prospect-reconcile-20261107` / PR #35) | Direct push to `main` |
+| Docs-only push to `docs/goldfish-sort-20261109` | Force-push `main` |
+| Short-lived branches cut from phase0 that PR **into** phase0 | Push from any `QUARANTINE.md` worktree |
+| `--force-with-lease` on your own tip when needed | Push secrets / `.env*` / prod keys |
+
+Before every phase0 push: `npm run agent:preflight` + relevant tests.
+
+### Merge
+
+1. **MUST NOT** merge PR #35 or any PR into `main`. Humans merge.
+2. **MUST** keep #35 **draft** until CI jobs `lint`, `typecheck`, `unit`, `convex-test` are green **and** a human asks to mark ready.
+3. **MUST NOT** open a second implementation PR against `main` while #35 is open.
+4. **MUST NOT** reopen quarantined PRs or merge quarantine trees.
+5. **MUST NOT** delete/disable CI checks or mark failing required jobs non-blocking to fake green.
+6. Agents **MAY** push to #35, comment with evidence, and close superseded PRs when already policy.
+
+Human ruleset proposal (not applied): `docs/BRANCH_PROTECTION_PROPOSAL.md`.
+
+### Deploy
+
+| Env | Agent |
+|---|---|
+| Local / Sprite + Convex **dev** `gregarious-ibis-329` | Yes |
+| Vercel **preview** for #35 (when linked) | Yes — report URL/SHA |
+| Vercel **production** (`main`) | Human only after #35 merge |
+| Convex **prod** `rightful-elk-426` (`convex deploy`, schema, env) | **Human OK required same turn** |
+| Customer site “deploy” (Loop 1) | Lifecycle path to `Handoff` + R2 artifact — not Prospect Studio prod promote |
+
+**MUST NOT:** auto-send outreach, enable prod email webhooks, flip DNS/SSO, or bypass Vercel SSO blocks as part of deploy work.
+
+### After #35 merges (human-driven)
+
+1. Update BASELINE SHAs on `main`.
+2. `npm run graph -- next` from post-merge `main`.
+3. Prod promote only with human checklist in `docs/GIT_AND_DEPLOY.md`.
