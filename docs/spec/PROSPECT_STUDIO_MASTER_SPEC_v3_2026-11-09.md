@@ -219,7 +219,7 @@ flowchart TB
 | Worker gateway | Sprite managed service | `/opt/prospect-worker/gateway` (proposed) | Sprite public HTTPS entry; auth required |
 | Rivet Sandbox Agent | Sprite managed service | `/opt/prospect-worker/agents` | Private loopback behind gateway |
 | Desktop + Chromium + noVNC | Sprite managed services | `/opt/prospect-worker/desktop` | Auth gateway + WebSocket |
-| DuckDB/crawl/site audit | Native Sprite tools | `/opt/prospect-worker/tools` | External data providers |
+| DuckDB/crawl/site audit | Native Sprite tools (**DuckDB is embedded-only — not hosted**) | `/opt/prospect-worker/tools` | Reads remote GeoParquet / local files; extract artifacts → R2; no DuckDB network service |
 | Build, Playwright, visual QA | Build/desktop Sprite | `/opt/prospect-worker/build` | Preview + artifact store |
 | Object bytes | Cloudflare R2 | versioned object keys | Signed upload/read, CDN only for approved public assets |
 | Source and CI | GitHub | Existing repo + verified workflows | CI → Vercel |
@@ -375,7 +375,7 @@ The `approvals` record in Convex is the sole decision record; it must reference 
 
 | Lane | Preferred first | Additional providers/algorithms | Selection proof |
 |---|---|---|---|
-| Bulk baseline | Overture Places via DuckDB remote GeoParquet | OSM, Foursquare Open Places, Geoapify | Actual usable place count, web/phone coverage, version, license |
+| Bulk baseline | Overture Places via **embedded** DuckDB on a Sprite worker reading remote GeoParquet (not a hosted DuckDB). Extract Parquet/JSONL → R2; Convex keeps run metadata + place refs only | OSM, Foursquare Open Places, Geoapify | Actual usable place count, web/phone coverage, version, license |
 | Gap/freshness | benchmark `gosom/google-maps-scraper` | Mahanaicoach kit, Apify/Outscraper reference, other lawful alternatives | Measured unique records, site/contact yield, cost, permitted use |
 | Multi-source aggregator | Adapter contract | Warmbly, Storefinch, Locus, Dukotah, OpenLeads, OpenProspector | Integration maturity, identity quality, cost, duplicate rate |
 | Website discovery | Domain/source matching | Stagehand browser as selective verification | Correctness/false negative rate |
@@ -1299,7 +1299,7 @@ Budget reservations before costly actions, track actual cost after receipts, enf
 | P2 — Storage | P1 | Verify/install Convex R2, upload/verify flow, artifact metadata/provenance, signed URLs, version keys | Real object upload/read/rights/expiry/dedupe/restore receipt |
 | P3 — Component library | P2 | React UI package, tokens, registry schema, Storybook setup, base stories, Playwright screenshot→R2 | Approved components have real story screenshot/version/test |
 | P4 — Sprite component | P1, P2 | Reusable Sprites component, worker gateway, bootstrap profiles, pool leases, health, checkpoints, callbacks | Convex calls real Sprite, returns authenticated job receipt, recovers after wake |
-| P5 — Discovery | P4 | Overture DuckDB extraction, R2 versioning, normalization, place identity resolver, coverage map, Score-1 | Reproducible Twin Cities extract and honest duplicate/coverage report |
+| P5 — Discovery | P4 | Overture extract via **embedded** DuckDB on Sprite (not hosted), R2 versioning, normalization, place identity resolver, coverage map, Score-1 | Reproducible Twin Cities extract and honest duplicate/coverage report |
 | P6 — Enrichment | P5 | Website state/source evidence, cheap checks, deep SiteOne/browser audit for shortlisted, Brand DNA version, Score-2 | 20 hand-reviewed A-tier websites; missing-site false negatives accounted for |
 | P7 — Visual generation | P3, P6 | Layout prior retrieval, reference bundle, image provider adapter, permissions, generated images in R2 | Real prospect-specific model run with traced inputs/outputs and review |
 | P8 — Design editor | P3, P7 | Canonical Design IR, Puck adapter, json-render adapter, patch validator, revision compare, agent layout proposal | Round-trip tests, actual manual edit + agent proposal converge to one versioned IR |
@@ -1523,6 +1523,7 @@ prospect-studio/                             [EXISTING REPO]
 | D-06 | Visual QA = Playwright screenshots; optional advisory evaluator only | Applied (B12) |
 | D-07 | P0 base branch = `fix/phase0-prospect-reconcile-20261107` on `main@db3056d`; reject unauthenticated `/compile` | Applied (P0) |
 | D-08 | Adopt `@convex-dev/workflow@0.4.10` and `@convex-dev/r2@0.10.4` from phase0; do not merge dirty rivet/hardening trees wholesale | Applied (P0) |
+| D-09 | DuckDB is embedded on Sprite discovery workers only — never hosted; Overture extract → R2 artifacts; Convex stores metadata/refs | Applied (infra) |
 
 ### FINAL definition of done
 

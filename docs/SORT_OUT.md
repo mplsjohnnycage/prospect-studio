@@ -24,6 +24,7 @@ Live inspection of Fly Sprite `elifant-goldfish` + `prospect-studio`, then goldf
 | Approvals | Convex sole decision record; Port deferred for Loop 1 |
 | Visual QA | Playwright screenshots; no Jev product required |
 | Interactive demos | `POST /forms/{slug}` → `formSubmissions` |
+| DuckDB | **Embedded only** on Sprite discovery workers — never a hosted DB (no MotherDuck/managed DuckDB as SoT). Reads Overture GeoParquet → writes extract artifacts to R2; Convex stores refs/metadata only |
 
 ## Sprite inventory (rechecked 2026-11-09)
 

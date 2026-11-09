@@ -55,6 +55,7 @@ Agents MUST NOT:
 5. Start work from any PR other than #35  
 6. Invent CommandKind / hash / role matrix outside P1 on the graph  
 7. Mark graph nodes `done` without exit-gate evidence  
+8. Host DuckDB (or treat it as infra SoT) — DuckDB is **embedded on Sprite workers only**; extracts land in R2, business state stays in Convex  
 
 ---
 
