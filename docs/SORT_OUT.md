@@ -57,3 +57,5 @@ Live inspection of Fly Sprite `elifant-goldfish` + `prospect-studio`, then goldf
 ## Next executable step
 
 On Sprite `prospect-studio`, continue from `wt-prospect-phase0`: finish AgentOS verify gate, open/merge the phase0 PR when CI is green, then start P1 contracts against `gregarious-ibis-329` only.
+
+**P0 gap map:** [`docs/P0_GAP_MATRIX.md`](P0_GAP_MATRIX.md) (PS-MASTER vs phase0; top Loop-1 blockers).
