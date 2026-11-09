@@ -4,7 +4,7 @@ Where each part of Prospect Studio runs. Updated 2026-11-03.
 
 | Role | Where | Notes |
 |---|---|---|
-| App, API routes, cron | Vercel (`prospect-studio`) | Hobby plan: 300 s per request, daily cron only |
+| App, API routes, cron | Vercel (`prospect-studio`) | **Pro** team (`johnnyc`). Live SSO **off** (2026-11-09). Pro request/cron limits apply — not Hobby. |
 | Data, run state, checkpoints | Convex (`rightful-elk-426` prod) | The whole sales loop runs here today |
 | Actor engine | Rivet Cloud, namespace `johnny-cage-4xuq-production-i6cu` | Engine only; it hosts no code |
 | Actors (code) | Vercel, `src/app/api/rivet/[...all]/route.ts` | Serverless pool; off until `RIVET_ENDPOINT` is set |
@@ -12,7 +12,7 @@ Where each part of Prospect Studio runs. Updated 2026-11-03.
 | Model routing | OmniRoute on the PC, `desktop-3apdbkg.taildf3a4b.ts.net:20128` | Tailnet only, API key required |
 | Rare code execution | `src/lib/execution.ts` | `vercel` (default, @vercel/sandbox, no network), `pc` (Sandbox Agent on :2468), `sprite` (Sprites API); Docker Cloud pending |
 
-The Fly Sprite `prospect-studio` is an execution environment and the operator box (SSH to the PC, `gh`, `vercel`, `claude`, `codex`, `grok`, `tailscale`). It does not host the app or a production runner.
+The Fly Sprite `prospect-studio` is an execution environment and the operator box (SSH to the PC, `gh`, `vercel`, `claude`, `codex`, `grok`, `tailscale`). It does not host the app or a production runner. Live `prospect-web` binds **127.0.0.1:3000** (loopback). Fleet sibling `elifant-goldfish` is unrelated (EGM/OpenCode).
 
 ## Versions
 

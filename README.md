@@ -12,14 +12,14 @@ A running Next.js 16 application backed by local SQLite, with shadcn/ui, a local
 - AgentMail `AGENTMAIL_API_KEY`, `AGENTMAIL_INBOX_ID`: unset; organization has reached three inbox quota. Existing inboxes must not be repurposed without an explicit decision.
 - Geospatial: `@convex-dev/geospatial` component registered in `convex/convex.config.ts`. Local radius-search functions implemented; coordinates are not guessed or fabricated.
 - No automatic email sends, no auto publishing, and no automatic billing.
-- **Security**: Owner-only Sprite access. The Next.js API has no application authentication or tenant enforcement yet. Do NOT make the web service publicly accessible until auth/rate-limiting/authorization added.
+- **Security**: Owner-only Sprite access. Live `prospect-web` is loopback-only (`127.0.0.1:3000`). Product auth exists on Convex/Vercel paths; do NOT expose the Sprite web listener publicly.
 - **Dependencies**: `npm audit` reports vulnerable transitive dependencies. Triage before any production exposure.
 
 ## Run
 ```bash
 cd /home/sprite/prospect-studio
 npm run build
-npm run start -- --hostname 0.0.0.0 --port 3000
+npm run start -- --hostname 127.0.0.1 --port 3000
 node --import tsx src/actors/start.ts
 node --import tsx --test src/lib/*.test.ts
 ```
