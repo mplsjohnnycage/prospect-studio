@@ -168,7 +168,7 @@
       "loop": "loop1",
       "goal": "Reproducible Twin Cities extract with honest coverage and Score-1.",
       "deliverables": [
-        "Overture DuckDB extraction",
+        "Overture extract via embedded DuckDB on Sprite (not hosted) → R2 artifacts",
         "R2 versioning + normalization",
         "Place identity resolver",
         "Coverage map + Score-1"
