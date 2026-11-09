@@ -51,6 +51,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.1",
     "convex": "^1.49.0",
+    "convex-secret-store": "^0.2.0",
     "firecrawl": "^4.51.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.66.0",
