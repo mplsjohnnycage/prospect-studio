@@ -7,6 +7,13 @@ export const secrets = new SecretStore<
   { owner?: string; label?: string; purpose?: string }
 >(components.secretStore);
 
+export const SPRITE_SECRET_NAMES = [
+  "SPRITES_TOKEN",
+  "SPRITE_EXEC_NAME",
+] as const;
+
+export type SpriteSecretName = (typeof SPRITE_SECRET_NAMES)[number];
+
 export const R2_SECRET_NAMES = [
   "R2_BUCKET",
   "R2_ENDPOINT",

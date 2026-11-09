@@ -22,7 +22,8 @@
     "test:storage": "node --import tsx --test --test-concurrency=4 src/lib/storage/*.test.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
-    "test:components": "node --import tsx --test --test-concurrency=4 src/lib/components/*.test.ts && node scripts/prove-component-screenshots.mjs"
+    "test:components": "node --import tsx --test --test-concurrency=4 src/lib/components/*.test.ts && node scripts/prove-component-screenshots.mjs",
+    "test:sprites": "node --import tsx --test --test-concurrency=4 src/lib/sprites/*.test.ts"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",
