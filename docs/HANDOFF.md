@@ -5,7 +5,7 @@ Paste this file into a new chat to continue. Owner: Johnny ("Found It. Fix It.",
 ## Where things live
 - **Code:** github.com/mplsjohnnycage/prospect-studio. `main` = what's in production (commit `046e11e`). Newer work is on branch `feat/production-build-leases-20261102` (see "Not yet in production").
 - **Dev box:** Fly Sprite `prospect-studio`, repo at `~/prospect-studio`. The CLIs (Convex, Vercel as `johnnyc-9164`, gh) are logged in there. The Sprites exec API sometimes returns a 502 or transport error; retry it.
-- **Frontend:** Vercel project `prospect-studio` (team `johnnyc`), https://prospect-studio-johnnyc.vercel.app. Vercel SSO protects it. Deploy with `npx vercel deploy --prod --yes` from the sprite.
+- **Frontend:** Vercel project `prospect-studio` (team `johnnyc`, **Pro** plan), https://prospect-studio-johnnyc.vercel.app. **Vercel SSO is currently off** (older handoff text said it protected the app); Better Auth / Convex session still gate the product. Deploy with `npx vercel deploy --prod --yes` from the sprite.
 - **Backend:** Convex. Dev = `gregarious-ibis-329` (`npx convex dev --once --typecheck enable`). Prod = `rightful-elk-426` (`npx convex deploy --yes --typecheck enable`).
 - **Login:** the email is fixed as `johnnyc@agentmail.to`. The first time, use "Activate" with the one-time code from the 11/1 email titled "Prospect Studio — private account activation" (in the johnnyc@agentmail.to inbox), then choose a password. Password reset isn't built yet.
 
