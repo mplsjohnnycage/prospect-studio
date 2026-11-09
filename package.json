@@ -24,7 +24,8 @@
     "build-storybook": "storybook build -o storybook-static",
     "test:components": "node --import tsx --test --test-concurrency=4 src/lib/components/*.test.ts && node scripts/prove-component-screenshots.mjs",
     "test:sprites": "node --import tsx --test --test-concurrency=4 src/lib/sprites/*.test.ts",
-    "test:discovery": "node --import tsx --test --test-concurrency=4 src/lib/discovery/*.test.ts && node scripts/prove-discovery-extract.mjs"
+    "test:discovery": "node --import tsx --test --test-concurrency=4 src/lib/discovery/*.test.ts && node scripts/prove-discovery-extract.mjs",
+    "test:enrichment": "node --import tsx --test --test-concurrency=4 src/lib/enrichment/*.test.ts && node scripts/prove-enrichment.mjs"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",

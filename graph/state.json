@@ -1,7 +1,7 @@
 {
   "graphId": "prospect-studio-loop1",
   "graphVersion": "1.0.0",
-  "updatedAt": "2026-11-09T20:42:43.394Z",
+  "updatedAt": "2026-11-09T20:51:24.571Z",
   "nodes": {
     "P0": {
       "status": "done",
@@ -41,7 +41,10 @@
       "updatedAt": "2026-11-09T20:42:43.393Z"
     },
     "P6": {
-      "status": "blocked"
+      "status": "done",
+      "agent": "auto-loop",
+      "evidence": "20 hand-reviewed sites + 7 missing-site accounted; R2 artifacts/p6-enrichment/enrichment-tc-2026-11-09/v1/014a2da174b60008; score2.v1 Brand DNA cheap-check; CI prior green 42695640638",
+      "updatedAt": "2026-11-09T20:51:24.570Z"
     },
     "P7": {
       "status": "blocked"
