@@ -24,6 +24,8 @@ import {businessKey} from "../src/lib/prospect-import";
 import {cleanError} from "../src/lib/agent-loop";
 import {firstEmail} from "../src/lib/sales";
 import {DEFAULT_PACKAGES} from "../src/lib/pricing";
+import {runTypedCommandFromMcp} from "../src/lib/operator";
+import {isCommandKind} from "../src/lib/contracts/command-kind";
 
 type Stage=(typeof stages)[number];
 const fail=(message:string)=>new ConvexError(message);
@@ -408,5 +410,15 @@ export const AGENT_TOOLS:Record<string,AgentTool>={
   description:"Never contact this email address, domain or website again. Blocks matching prospects. Use when someone asks to be left alone or Johnny says so.",
   args:{value:v.string(),reason:v.optional(v.string())},write:true,
   run:(ctx,ownerId,a)=>ctx.runMutation(internal.agentTools.doNotContact,{ownerId,...a}),
+ }),
+ run_typed_command:defineTool({
+  title:"Run typed command",
+  description:"Dispatch a Prospect Studio CommandKind envelope. Identical typed command path as the in-app operator UI (P11).",
+  args:{kind:v.string(),commandId:v.string(),idempotencyKey:v.string(),correlationId:v.string(),expectedRevision:v.number(),subjectType:v.union(v.literal("prospect"),v.literal("concept"),v.literal("outreach"),v.literal("artifact"),v.literal("place")),subjectId:v.string(),payload:v.optional(v.any())},write:true,
+  run:async(_ctx,ownerId,a)=>{
+   if(!isCommandKind(String(a.kind)))throw fail("Unknown CommandKind");
+   const result=runTypedCommandFromMcp({role:"agent",actorId:ownerId},{kind:a.kind as any,commandId:String(a.commandId),idempotencyKey:String(a.idempotencyKey),correlationId:String(a.correlationId),expectedRevision:Number(a.expectedRevision),subjectType:a.subjectType as any,subjectId:String(a.subjectId),payload:(a.payload as Record<string,unknown>|undefined)});
+   return {channel:result.channel,fingerprint:result.fingerprint,receipt:result.receipt,duplicate:result.duplicate};
+  },
  }),
 };

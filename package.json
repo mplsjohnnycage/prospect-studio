@@ -7,7 +7,7 @@
     "build": "npm run verify && next build --webpack && node scripts/check-built-styles.mjs",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node --import tsx --test --test-concurrency=4 src/lib/*.test.ts src/lib/contracts/*.test.ts",
+    "test:unit": "node --import tsx --test --test-concurrency=4 src/lib/*.test.ts src/lib/contracts/*.test.ts src/lib/operator/*.test.ts",
     "agentos:smoke": "node --import tsx scripts/agentos-smoke.ts",
     "agentos:actor-check": "node --import tsx scripts/agentos-actor-test.ts",
     "pi:readiness": "node --import tsx scripts/pi-durable-readiness.mts",
@@ -29,7 +29,8 @@
     "test:visuals": "node --import tsx --test --test-concurrency=4 src/lib/visuals/*.test.ts && node scripts/prove-visuals.mjs",
     "test:design": "node --import tsx --test --test-concurrency=4 src/lib/design/*.test.ts && node scripts/prove-design-ir.mjs",
     "test:qa": "node --import tsx --test --test-concurrency=4 src/lib/siteqa/*.test.ts && node scripts/prove-build-qa.mjs",
-    "test:approvals": "node --import tsx --test --test-concurrency=4 src/lib/handoff/*.test.ts src/lib/contracts/*.test.ts && node scripts/prove-handoff.mjs"
+    "test:approvals": "node --import tsx --test --test-concurrency=4 src/lib/handoff/*.test.ts src/lib/contracts/*.test.ts && node scripts/prove-handoff.mjs",
+    "test:operator": "node --import tsx --test --test-concurrency=4 src/lib/operator/*.test.ts && node scripts/prove-operator.mjs"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",

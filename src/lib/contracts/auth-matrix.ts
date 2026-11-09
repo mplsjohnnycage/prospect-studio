@@ -83,6 +83,16 @@ export function assertCanCommand(actor: AuthActor, kind: string): void {
   }
 }
 
+export function canControlDesktop(actor: AuthActor): boolean {
+  return actor.role === "owner" || actor.role === "operator";
+}
+
+export function assertCanControlDesktop(actor: AuthActor): void {
+  if (!canControlDesktop(actor)) {
+    throw new UnauthorizedError(`role ${actor.role} cannot control desktop`);
+  }
+}
+
 export function assertCanApprove(actor: AuthActor): void {
   if (!canApprove(actor)) {
     throw new UnauthorizedError(`role ${actor.role} cannot approve`);
