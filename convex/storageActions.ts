@@ -265,6 +265,76 @@ async function doRestore(
   };
 }
 
+async function doBinaryUpload(
+  ctx: ActionCtx,
+  args: {
+    ownerId: string;
+    artifactId: string;
+    base64: string;
+    contentType: string;
+    actorId?: string;
+    kind?: string;
+    source?: string;
+  },
+): Promise<Receipt> {
+  const bytes = Buffer.from(args.base64, "base64");
+  const contentHash = createHash("sha256").update(bytes).digest("hex");
+  const actorId = args.actorId ?? "auto-loop";
+  const existing = (await ctx.runQuery(internal.storage.findByContentHash, {
+    ownerId: args.ownerId,
+    contentHash,
+  })) as ArtifactRow | null;
+  if (existing) {
+    return {
+      ok: true,
+      op: "dedupe",
+      artifactId: existing.artifactId,
+      objectKey: existing.objectKey,
+      contentHash,
+      version: existing.version,
+      bucket: existing.bucket,
+      reused: true,
+      recordedAt: Date.now(),
+    };
+  }
+  const prev = (await ctx.runQuery(internal.storage.getArtifact, {
+    ownerId: args.ownerId,
+    artifactId: args.artifactId,
+  })) as ArtifactRow | null;
+  const version = (prev?.version ?? 0) + 1;
+  const objectKey = `artifacts/${encodeURIComponent(args.ownerId)}/${encodeURIComponent(args.artifactId)}/v${version}/${contentHash.slice(0, 16)}`;
+  const client = await r2WithSecretConfig(ctx);
+  await client.store(ctx, bytes, { key: objectKey, type: args.contentType });
+  const now = Date.now();
+  await ctx.runMutation(internal.storage.upsertArtifactRow, {
+    ownerId: args.ownerId,
+    artifactId: args.artifactId,
+    version,
+    objectKey,
+    bucket: client.config.bucket,
+    contentHash,
+    contentType: args.contentType,
+    byteLength: bytes.byteLength,
+    kind: args.kind ?? "screenshot",
+    source: args.source ?? "p3-component-screenshot",
+    actorId,
+    previousObjectKey: prev?.objectKey,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return {
+    ok: true,
+    op: "upload",
+    artifactId: args.artifactId,
+    objectKey,
+    contentHash,
+    version,
+    bucket: client.config.bucket,
+    reused: false,
+    recordedAt: now,
+  };
+}
+
 /** Prove upload + provenance (+ dedupe when content matches). */
 export const proveUpload = internalAction({
   args: {
@@ -276,6 +346,20 @@ export const proveUpload = internalAction({
   },
   returns: receiptValidator,
   handler: async (ctx, args): Promise<Receipt> => doUpload(ctx, args),
+});
+
+export const proveBinaryUpload = internalAction({
+  args: {
+    ownerId: v.string(),
+    artifactId: v.string(),
+    base64: v.string(),
+    contentType: v.string(),
+    actorId: v.optional(v.string()),
+    kind: v.optional(v.string()),
+    source: v.optional(v.string()),
+  },
+  returns: receiptValidator,
+  handler: async (ctx, args): Promise<Receipt> => doBinaryUpload(ctx, args),
 });
 
 export const proveRead = internalAction({

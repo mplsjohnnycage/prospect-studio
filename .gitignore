@@ -48,3 +48,6 @@ deploy/pc-node/*.env
 # lifecycle FSM
 lifecycle/node_modules/
 lifecycle/dist/
+
+storybook-static/
+.tmp/
