@@ -5,7 +5,7 @@
   "nodes": {
     "P0": {
       "status": "in_progress",
-      "note": "Phase0 reconcile + SORT_OUT locked; AgentOS verify hang still blocks full exit gate."
+      "note": "BASELINE.md locked: only wt-prospect-phase0 + PR #35 + Convex dev. AgentOS verify/CI still blocks full P0 exit gate; do not open a second lane."
     },
     "P1": { "status": "blocked" },
     "P2": { "status": "blocked" },

@@ -2,6 +2,8 @@
 
 Live inspection of Fly Sprite `elifant-goldfish` + `prospect-studio`, then goldfish Wave 1 blocker fixes applied to the master spec.
 
+**Agent-ready baseline:** read [`BASELINE.md`](./BASELINE.md) first. One worktree, one PR (#35), one Convex dev, one Zod graph. Everything else is quarantine.
+
 ## What was wrong
 
 1. Master spec had four competing stage vocabularies, dual Port/Convex approval authority, undefined Jev QA, and conversation-over-document precedence.
