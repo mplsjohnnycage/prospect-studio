@@ -1,0 +1,1540 @@
+{
+  "specification": "PS-MASTER-3.1",
+  "asOf": "2026-11-09",
+  "notice": "Inventory is an engineering target aligned to PS-MASTER-3.1. V vs P status is specified in companion Markdown. Code names and interfaces for new capabilities are proposed, not verified installed unless noted in SORT_OUT.",
+  "totals": {
+    "nodes": 119,
+    "edges": 119
+  },
+  "nodes": [
+    {
+      "id": "CX01",
+      "name": "@convex-dev/better-auth",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Authentication integration",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX02",
+      "name": "@convex-dev/agent",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Thread/message/tool infrastructure",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX03",
+      "name": "@convex-dev/rate-limiter",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Rate budgets",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX04",
+      "name": "@convex-dev/aggregate",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Incremental aggregates",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX05",
+      "name": "@convex-dev/action-cache",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Cache for eligible actions",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX06",
+      "name": "@convex-dev/geospatial",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Geospatial lookup",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX07",
+      "name": "@firecrawl/firecrawl-convex",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Firecrawl integration",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX08",
+      "name": "@agentmail/convex",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Mail integration",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX09",
+      "name": "@convex-dev/workpool",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Controlled concurrency",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX10",
+      "name": "@convex-dev/mcp",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Remote MCP server and auth",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX11",
+      "name": "Convex Workflow",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Existing community package, verify/install",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX12",
+      "name": "R2 object storage",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Existing community package, verify/install",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX13",
+      "name": "Sprites",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Private reusable Convex component",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX14",
+      "name": "Discovery",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Private reusable Convex component",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX15",
+      "name": "Enrichment",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Private reusable Convex component",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX16",
+      "name": "Port",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Private reusable Convex component",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX17",
+      "name": "ImageGen",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Adapter/possibly component after feasibility check",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX18",
+      "name": "Asset registry",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Host app + optional reusable asset package",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX19",
+      "name": "Design/catalog",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Host app domain with reusable package",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX20",
+      "name": "Render/evaluate",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Host app actions + Sprite worker",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX21",
+      "name": "Deployment",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Host app provider adapter",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "CX22",
+      "name": "Communications",
+      "category": "convex-capability",
+      "location": "Convex",
+      "description": "Host app, existing AgentMail",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S00",
+      "name": "App shell / command header",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "StudioShell, GlobalCommandBar, AgentCommand",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S01",
+      "name": "Map home + Prospects rail",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "ProspectMap, ProspectsRail, BusinessMarker, ProspectRow",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S02",
+      "name": "Market discovery / search filters",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "DiscoveryDrawer, TerritoryPicker, TradeFilter, ScoreFilter",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S03",
+      "name": "Marker hover / business peek",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "MarkerPeek, BusinessIdentity, SignalChip",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S04",
+      "name": "Selected-business profile overlay",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "BusinessProfileGlass, BusinessHeader, CompanyTabs",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S05",
+      "name": "Business Overview",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "BusinessOverview, ScoreSummary, EvidenceFeed, Competitors",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S06",
+      "name": "Brand DNA overview",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "BrandDnaSummary, BrandAssetGrid, TokenPreview",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S07",
+      "name": "Brand DNA detail/asset inspector",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "AssetInspector, SourceCitation, AssetVersionCompare",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S08",
+      "name": "Global Inbox rail",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "InboxRail, ThreadRow, MessageState",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S09",
+      "name": "Global conversation overlay",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "ConversationOverlay, DraftEditor, ApprovalAction",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S10",
+      "name": "Per-business Inbox tab",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "CompanyInbox, MessageTimeline",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S11",
+      "name": "Design tab on company profile",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "DesignSummary, LatestPreviewCard, ConceptGalleryMini",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S12",
+      "name": "Segment & Autopilot configuration",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "BatchComposer, TerritoryPicker, BudgetPolicy",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S13",
+      "name": "Batch progress/activity",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "BatchProgressPanel, RunTimeline, BatchProgressChip",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S14",
+      "name": "Adaptive agent workspace",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "OperatorDock, AgentWidgetHost, ToolActivity",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S15",
+      "name": "Browser temporary widget",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "BrowserActivityWidget, DesktopPreview",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S16",
+      "name": "Crawl temporary widget",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "CrawlActivityWidget, EvidenceReceipt",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S17",
+      "name": "Inbox/message temporary widget",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "MessageActivityWidget, DraftReview",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S18",
+      "name": "Design generation/critique widget",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "DesignActivityWidget, GenerationProgress, VisualDiff",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S19",
+      "name": "Approval/evidence widget",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "ApprovalSheet, EvidenceReceipt, RevisionHash",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S20",
+      "name": "Full Stitch-like Design Studio",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "DesignStudio, ConceptBoard, PuckEditor, AgentDesignPanel",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S21",
+      "name": "Comparison/revision focus",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "RevisionCompare, VisualDiff, ComponentInspector",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S22",
+      "name": "Demo preview / QA / publish",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "DemoPreview, QaChecklist, PublishPanel",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S23",
+      "name": "Conversion/customer acceptance",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "DealPanel, ProposalPanel, BookingTimeline",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "S24",
+      "name": "Production handoff",
+      "category": "screen",
+      "location": "Vercel Next.js / React frontend",
+      "description": "ProductionHandoff, DomainChecklist, DeploymentReceipt",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C01",
+      "name": "GlassPanel",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "title?, open, size, onClose, children",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C02",
+      "name": "BusinessIdentity",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "businessId, logoAssetId?, name, trade, location, freshness",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C03",
+      "name": "BusinessMarker",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "location, identity, selected, status, onSelect",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C04",
+      "name": "ProspectRow",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "businessId, logo, scores?, pipelineState, signal?",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C05",
+      "name": "CompetitorMarker",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "businessId, location, competitorOf[]",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C06",
+      "name": "SitePresenceBadge",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "state, observedAt?, evidenceIds[]",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C07",
+      "name": "ScoreSummary",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "dimensions[], explanations[], computedAt?",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C08",
+      "name": "SignalChip",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "kind, sourceIds[], observedAt, confidence, label",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C09",
+      "name": "PipelineStepIndicator",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "stage, status, completedStages[]",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C10",
+      "name": "AssetCard",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "assetId, kind, rights, verification, reviewState",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C11",
+      "name": "LatestPreviewCard",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "artifactId, previewType, version, createdAt",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C12",
+      "name": "CompanyTabs",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "activeTab, businessId, onChange",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C13",
+      "name": "ThreadRow",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "threadId, channel, snippet, timestamp, unread, state",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C14",
+      "name": "MessageState",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "status, receiptId?, approvedRevision?",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C15",
+      "name": "AgentWidgetHost",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "activeTool?, targetRef, runId, receiptRefs[]",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C16",
+      "name": "EvidenceReceipt",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "source, observedAt, finding, artifactId?, runId",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C17",
+      "name": "BatchProgressChip",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "batchId, processed, total, pending, failed, cost?",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C18",
+      "name": "AgentCommand",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "context, allowedActions[], commandDraft, onSubmit",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C19",
+      "name": "ConceptArtboard",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "conceptVersionId, viewport, renderType, selection",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C20",
+      "name": "ApprovalAction",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "action, subjectId, revision, contentSha256, recipient?",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C21",
+      "name": "StateToast",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "status, reason, sourceRef?, openEvidence?",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C22",
+      "name": "NoDataOrError",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "kind, message, retry?, sourceStatus?",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C23",
+      "name": "DataFreshness",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "observedAt?, syncedAt?, verifiedAt?, sourceQuality",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "C24",
+      "name": "StatusDot",
+      "category": "original-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "semanticState, label",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D01",
+      "name": "BrandDnaInspector",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Brand DNA version + evidence",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D02",
+      "name": "AssetLibraryDrawer",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "R2 asset index",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D03",
+      "name": "StorybookComponentBrowser",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Convex catalog + story screenshots",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D04",
+      "name": "LayoutPriorPicker",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Prior layout registry and samples",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D05",
+      "name": "DesignPlanEditor",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Brand, goals, chosen references",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D06",
+      "name": "ImageGenControls",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Model policy, design plan",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D07",
+      "name": "GenerationGallery",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "ImageGen output artifact IDs",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D08",
+      "name": "ConceptApprovalPanel",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Candidate, provenance, plan version",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D09",
+      "name": "DesignCanvasShell",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Design document and selected revision",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D10",
+      "name": "PuckPageEditor",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "IR→Puck adapter, component registry",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D11",
+      "name": "JsonRenderAgentPreview",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "json-render spec/catalog",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D12",
+      "name": "DesignPatchReview",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Proposed diff/IR patch and revisions",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D13",
+      "name": "TokenInspector",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Token set and component compatibility",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D14",
+      "name": "ResponsiveViewportSwitcher",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Render widths/device presets",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D15",
+      "name": "SourceVsConceptCompare",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Original screenshot, ImageGen concept",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D16",
+      "name": "ConceptVsBuildCompare",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Approved image, real browser render",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D17",
+      "name": "VisualQaReport",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "QA receipts and screenshots",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D18",
+      "name": "BuildRunPanel",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Build job logs and artifact manifest",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D19",
+      "name": "SiteLivePreview",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Authenticated preview URL",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "D20",
+      "name": "PublishReview",
+      "category": "design-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Exact artifact SHA and QA receipt",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "O01",
+      "name": "OperatorChatDock",
+      "category": "operator-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Convex agent thread",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "O02",
+      "name": "WorkflowTimeline",
+      "category": "operator-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Pipeline run and stage receipts",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "O03",
+      "name": "WorkerFleetPanel",
+      "category": "operator-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Sprite registry",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "O04",
+      "name": "AgentSessionPanel",
+      "category": "operator-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Rivet session metadata/events",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "O05",
+      "name": "SpriteDesktopIframe",
+      "category": "operator-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Desktop gateway session",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "O06",
+      "name": "ApprovalInbox",
+      "category": "operator-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Pending approvals",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "O07",
+      "name": "ProviderHealthAndCost",
+      "category": "operator-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Run/provider metrics",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "O08",
+      "name": "SourceEvidenceExplorer",
+      "category": "operator-ui-component",
+      "location": "Vercel Next.js / React frontend",
+      "description": "Source graph and R2 artifact refs",
+      "source": "PS-MASTER-3.0"
+    },
+    {
+      "id": "platform:convex",
+      "name": "Convex",
+      "category": "platform",
+      "location": "Convex",
+      "description": ""
+    },
+    {
+      "id": "platform:sprite-worker",
+      "name": "Sprite Worker",
+      "category": "platform",
+      "location": "Sprite Worker",
+      "description": ""
+    },
+    {
+      "id": "platform:rivet-sandbox-agent",
+      "name": "Rivet Sandbox Agent",
+      "category": "platform",
+      "location": "Rivet Sandbox Agent",
+      "description": ""
+    },
+    {
+      "id": "platform:port",
+      "name": "Port",
+      "category": "platform",
+      "location": "Port",
+      "description": ""
+    },
+    {
+      "id": "platform:r2",
+      "name": "R2",
+      "category": "platform",
+      "location": "R2",
+      "description": ""
+    },
+    {
+      "id": "platform:vercel",
+      "name": "Vercel",
+      "category": "platform",
+      "location": "Vercel",
+      "description": ""
+    },
+    {
+      "id": "platform:github",
+      "name": "GitHub",
+      "category": "platform",
+      "location": "GitHub",
+      "description": ""
+    },
+    {
+      "id": "platform:storybook",
+      "name": "Storybook",
+      "category": "platform",
+      "location": "Storybook",
+      "description": ""
+    },
+    {
+      "id": "platform:puck",
+      "name": "Puck",
+      "category": "platform",
+      "location": "Puck",
+      "description": ""
+    },
+    {
+      "id": "platform:json-render",
+      "name": "json-render",
+      "category": "platform",
+      "location": "json-render",
+      "description": ""
+    },
+    {
+      "id": "platform:imagegen",
+      "name": "ImageGen",
+      "category": "platform",
+      "location": "ImageGen",
+      "description": ""
+    },
+    {
+      "id": "platform:playwright",
+      "name": "Playwright",
+      "category": "platform",
+      "location": "Playwright",
+      "description": ""
+    },
+    {
+      "id": "platform:mcp-client",
+      "name": "MCP Client",
+      "category": "platform",
+      "location": "MCP Client",
+      "description": ""
+    },
+    {
+      "id": "platform:headless-client",
+      "name": "Headless Client",
+      "category": "platform",
+      "location": "Headless Client",
+      "description": ""
+    },
+    {
+      "id": "platform:business-source",
+      "name": "Business Source",
+      "category": "platform",
+      "location": "Business Source",
+      "description": ""
+    },
+    {
+      "id": "platform:operator",
+      "name": "Operator",
+      "category": "platform",
+      "location": "Operator",
+      "description": ""
+    },
+    {
+      "id": "platform:design-ir",
+      "name": "Design IR",
+      "category": "platform",
+      "location": "Design IR",
+      "description": ""
+    },
+    {
+      "id": "platform:component-catalog",
+      "name": "Component Catalog",
+      "category": "platform",
+      "location": "Component Catalog",
+      "description": ""
+    },
+    {
+      "id": "platform:build-qa",
+      "name": "Build/QA",
+      "category": "platform",
+      "location": "Build/QA",
+      "description": ""
+    },
+    {
+      "id": "platform:prospect-studio-ui",
+      "name": "Prospect Studio UI",
+      "category": "platform",
+      "location": "Prospect Studio UI",
+      "description": ""
+    }
+  ],
+  "edges": [
+    {
+      "from": "platform:mcp-client",
+      "to": "CX10",
+      "relation": "invoke"
+    },
+    {
+      "from": "platform:headless-client",
+      "to": "CX10",
+      "relation": "invoke"
+    },
+    {
+      "from": "platform:prospect-studio-ui",
+      "to": "CX02",
+      "relation": "chat"
+    },
+    {
+      "from": "CX10",
+      "to": "CX02",
+      "relation": "operator tools"
+    },
+    {
+      "from": "CX02",
+      "to": "CX11",
+      "relation": "schedule pipeline"
+    },
+    {
+      "from": "CX11",
+      "to": "CX09",
+      "relation": "bounded concurrency"
+    },
+    {
+      "from": "CX11",
+      "to": "CX13",
+      "relation": "coordinate"
+    },
+    {
+      "from": "CX11",
+      "to": "CX14",
+      "relation": "coordinate"
+    },
+    {
+      "from": "CX11",
+      "to": "CX15",
+      "relation": "coordinate"
+    },
+    {
+      "from": "CX11",
+      "to": "CX17",
+      "relation": "coordinate"
+    },
+    {
+      "from": "CX11",
+      "to": "CX20",
+      "relation": "coordinate"
+    },
+    {
+      "from": "CX11",
+      "to": "CX21",
+      "relation": "coordinate"
+    },
+    {
+      "from": "CX11",
+      "to": "CX16",
+      "relation": "coordinate"
+    },
+    {
+      "from": "CX14",
+      "to": "CX13",
+      "relation": "allocate worker"
+    },
+    {
+      "from": "CX15",
+      "to": "CX13",
+      "relation": "allocate worker"
+    },
+    {
+      "from": "CX17",
+      "to": "CX13",
+      "relation": "allocate worker"
+    },
+    {
+      "from": "CX20",
+      "to": "CX13",
+      "relation": "allocate worker"
+    },
+    {
+      "from": "CX13",
+      "to": "platform:sprite-worker",
+      "relation": "provision/execute"
+    },
+    {
+      "from": "platform:sprite-worker",
+      "to": "platform:rivet-sandbox-agent",
+      "relation": "host managed service"
+    },
+    {
+      "from": "CX16",
+      "to": "platform:port",
+      "relation": "typed API/webhook"
+    },
+    {
+      "from": "CX12",
+      "to": "platform:r2",
+      "relation": "object operations"
+    },
+    {
+      "from": "CX18",
+      "to": "CX12",
+      "relation": "register/upload"
+    },
+    {
+      "from": "platform:business-source",
+      "to": "CX14",
+      "relation": "source records"
+    },
+    {
+      "from": "CX14",
+      "to": "CX18",
+      "relation": "versioned extracts"
+    },
+    {
+      "from": "CX15",
+      "to": "CX18",
+      "relation": "audit evidence"
+    },
+    {
+      "from": "CX17",
+      "to": "platform:imagegen",
+      "relation": "provider adapter"
+    },
+    {
+      "from": "CX17",
+      "to": "CX18",
+      "relation": "generated images"
+    },
+    {
+      "from": "platform:github",
+      "to": "platform:storybook",
+      "relation": "versioned components"
+    },
+    {
+      "from": "platform:storybook",
+      "to": "platform:playwright",
+      "relation": "render actual stories"
+    },
+    {
+      "from": "platform:playwright",
+      "to": "CX18",
+      "relation": "reference screenshots"
+    },
+    {
+      "from": "CX19",
+      "to": "platform:component-catalog",
+      "relation": "registry authority"
+    },
+    {
+      "from": "platform:component-catalog",
+      "to": "platform:storybook",
+      "relation": "component variants/stories"
+    },
+    {
+      "from": "platform:component-catalog",
+      "to": "platform:puck",
+      "relation": "editable subset"
+    },
+    {
+      "from": "platform:component-catalog",
+      "to": "platform:json-render",
+      "relation": "agent catalog subset"
+    },
+    {
+      "from": "platform:puck",
+      "to": "platform:design-ir",
+      "relation": "validated human patch"
+    },
+    {
+      "from": "platform:json-render",
+      "to": "platform:design-ir",
+      "relation": "validated agent proposal"
+    },
+    {
+      "from": "platform:imagegen",
+      "to": "platform:design-ir",
+      "relation": "art direction reference, not code"
+    },
+    {
+      "from": "platform:design-ir",
+      "to": "CX20",
+      "relation": "build exact revision"
+    },
+    {
+      "from": "CX20",
+      "to": "platform:build-qa",
+      "relation": "compile and verify"
+    },
+    {
+      "from": "platform:build-qa",
+      "to": "platform:playwright",
+      "relation": "browser QA"
+    },
+    {
+      "from": "CX21",
+      "to": "platform:vercel",
+      "relation": "deploy approved build"
+    },
+    {
+      "from": "CX21",
+      "to": "platform:github",
+      "relation": "source commit/CI"
+    },
+    {
+      "from": "S00",
+      "to": "CX02",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S01",
+      "to": "CX14",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S02",
+      "to": "CX14",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S03",
+      "to": "CX14",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S04",
+      "to": "CX18",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S05",
+      "to": "CX15",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S06",
+      "to": "CX19",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S07",
+      "to": "CX19",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S08",
+      "to": "CX22",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S09",
+      "to": "CX22",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S10",
+      "to": "CX22",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S11",
+      "to": "CX19",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S12",
+      "to": "CX14",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S13",
+      "to": "CX14",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S14",
+      "to": "CX02",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S15",
+      "to": "CX02",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S16",
+      "to": "CX02",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S17",
+      "to": "CX02",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S18",
+      "to": "CX19",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S19",
+      "to": "CX02",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S20",
+      "to": "CX19",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S21",
+      "to": "CX19",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S22",
+      "to": "CX19",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S23",
+      "to": "CX22",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "S24",
+      "to": "CX21",
+      "relation": "UI data/action"
+    },
+    {
+      "from": "C01",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C02",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C03",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C04",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C05",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C06",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C07",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C08",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C09",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C10",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C11",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C12",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C13",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C14",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C15",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C16",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C17",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C18",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C19",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C20",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C21",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C22",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C23",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "C24",
+      "to": "platform:prospect-studio-ui",
+      "relation": "render"
+    },
+    {
+      "from": "D01",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D02",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D03",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D04",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D05",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D06",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D07",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D08",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D09",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D10",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D11",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D12",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D13",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D14",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D15",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D16",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D17",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D18",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D19",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "D20",
+      "to": "platform:prospect-studio-ui",
+      "relation": "design panel"
+    },
+    {
+      "from": "O01",
+      "to": "platform:prospect-studio-ui",
+      "relation": "operator panel"
+    },
+    {
+      "from": "O02",
+      "to": "platform:prospect-studio-ui",
+      "relation": "operator panel"
+    },
+    {
+      "from": "O03",
+      "to": "platform:prospect-studio-ui",
+      "relation": "operator panel"
+    },
+    {
+      "from": "O04",
+      "to": "platform:prospect-studio-ui",
+      "relation": "operator panel"
+    },
+    {
+      "from": "O05",
+      "to": "platform:prospect-studio-ui",
+      "relation": "operator panel"
+    },
+    {
+      "from": "O06",
+      "to": "platform:prospect-studio-ui",
+      "relation": "operator panel"
+    },
+    {
+      "from": "O07",
+      "to": "platform:prospect-studio-ui",
+      "relation": "operator panel"
+    },
+    {
+      "from": "O08",
+      "to": "platform:prospect-studio-ui",
+      "relation": "operator panel"
+    }
+  ]
+}

@@ -44,3 +44,7 @@ next-env.d.ts
 
 # PC node secrets
 deploy/pc-node/*.env
+
+# exec graph
+graph/node_modules/
+graph/dist/

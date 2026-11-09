@@ -26,3 +26,17 @@ node --import tsx --test src/lib/*.test.ts
 
 ## API
 `GET /api/health`; `GET/POST /api/prospects`; `GET/POST /api/prospects/:id`; `GET /api/activity`; `GET /api/actor-status`; `GET /api/providers`; `GET /api/mail`; `POST /api/research`; `GET /api/geo?lat=45&lon=-93&km=20`.
+
+## Sorted baseline (PS-MASTER-3.1)
+
+Locked decisions and Wave 1 sort live under `docs/SORT_OUT.md`.
+Agent-executable Loop 1 DAG (Zod + TypeScript) is self-contained in `graph/`:
+
+```bash
+cd graph && npm install
+npm run graph -- next --loop loop1
+npm run graph -- prompt P0
+```
+
+Do not replace this app's root `package.json` when updating the graph.
+

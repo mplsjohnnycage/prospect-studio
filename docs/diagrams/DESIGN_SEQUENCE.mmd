@@ -1,0 +1,25 @@
+sequenceDiagram
+  actor Human
+  participant Studio as Design Studio
+  participant CX as Convex
+  participant R2 as R2
+  participant Model as Image Provider
+  participant Sprite as Build/QA Sprite
+  Human->>Studio: Open prospect + Brand DNA
+  Studio->>CX: Load evidence/Storybook catalog refs
+  Human->>Studio: Authorize image generation
+  Studio->>CX: Request generation for exact plan
+  CX->>Model: Versioned prompt/assets/provider policy
+  Model-->>CX: Generated images + provider receipt
+  CX->>R2: Store output/refs/lineage
+  Studio->>Human: Show artboards A-D
+  Human->>CX: Select concept (bound to image/version)
+  CX->>CX: Create proposed canonical Design IR
+  Studio->>CX: Puck edits or json-render proposal
+  CX->>CX: Validate patch and commit revision
+  Human->>CX: Approve build direction
+  CX->>Sprite: Compile React from IR + catalog
+  Sprite->>R2: Build output, screenshots, QA receipts
+  Sprite-->>CX: Verified build/QA
+  Human->>CX: Approve exact artifact hash
+  CX->>CX: Prepare publish/handoff

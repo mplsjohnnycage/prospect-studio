@@ -1,0 +1,19 @@
+stateDiagram-v2
+  [*] --> Indexed
+  Indexed --> Scored: normalized + source evidence
+  Scored --> Enriched: approved selective enrichment
+  Enriched --> Qualified: rules + evidence
+  Qualified --> GenPendingApproval: request visual generation
+  GenPendingApproval --> Generating: human gate + spend policy
+  Generating --> ConceptReview: images + receipts
+  ConceptReview --> DesignIR: approved visual direction
+  DesignIR --> Building: validated IR + component versions
+  Building --> QA: compiled build receipt
+  QA --> ArtifactReview: independent QA passed
+  ArtifactReview --> Handoff: exact revision approved
+  Handoff --> OutreachDraft: separately authorized commercial workflow
+  OutreachDraft --> SendPending: exact recipient/body approved
+  SendPending --> Sent: provider receipt verified
+  Sent --> Converted: real conversion evidence
+  Converted --> ProductionGate: signed agreement/payment conditions
+  ProductionGate --> Produced: authorized production deploy + verified health

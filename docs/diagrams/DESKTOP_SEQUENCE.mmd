@@ -1,0 +1,19 @@
+sequenceDiagram
+  actor Human
+  participant UI as Next.js Studio
+  participant C as Convex
+  participant S as Sprites API
+  participant G as Worker Gateway
+  participant A as Rivet Sandbox Agent
+  Human->>UI: Open agent computer
+  UI->>C: Request view session
+  C->>S: Ensure worker allocated/woken
+  C->>G: Register short-lived scoped session
+  C-->>UI: Gateway iframe URL/session
+  UI->>G: HTTPS iframe and authenticated WS
+  G->>G: noVNC connects to current X11 desktop
+  UI-->>Human: Live actual browser desktop
+  Human->>C: Request control takeover
+  C->>G: Authorize control lease
+  G->>A: Coordinate agent pause/handoff
+  G-->>UI: Control lease and audit status

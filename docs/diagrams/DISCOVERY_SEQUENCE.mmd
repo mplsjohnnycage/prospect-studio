@@ -1,0 +1,17 @@
+sequenceDiagram
+  actor User
+  participant UI as Studio/MCP
+  participant CX as Convex
+  participant SW as Sprite Worker
+  participant R2 as R2
+  participant SRC as Places Source
+  User->>UI: Discover services in territory
+  UI->>CX: discovery.start + budget/idempotency
+  CX->>CX: Persist command + outbox
+  CX->>SW: Allocate/submit discovery job
+  SW->>SRC: Query bulk dataset/provider
+  SRC-->>SW: Source records
+  SW->>R2: Write immutable extract
+  SW-->>CX: Artifact receipt + counts
+  CX->>CX: Normalize/link/dedupe + Score-1
+  CX-->>UI: Live indexed/qualified candidates

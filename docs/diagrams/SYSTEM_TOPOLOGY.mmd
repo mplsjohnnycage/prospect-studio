@@ -1,0 +1,57 @@
+flowchart TB
+  subgraph Clients[CALLERS]
+    UI[Next.js Studio UI]
+    ChatGPT[ChatGPT MCP client]
+    CLI[Other MCP clients and CLI]
+    Cron[Authorized headless trigger]
+  end
+  subgraph CX[CONVEX CONTROL PLANE]
+    Auth[Auth + RBAC]
+    MCP[Existing MCP component]
+    Op[Operator / Agent component]
+    WF[Workflow + Workpool]
+    Domain[Business domain state + commands + outbox]
+    SprC[Sprites infrastructure component]
+    Disc[Discovery component]
+    Enr[Enrichment component]
+    PortC[Port integration component]
+    Asset[Assets + R2 adapter]
+    Design[Design IR + catalog registry]
+  end
+  subgraph Sprite[FLY SPRITES WORKER POOL]
+    Gateway[Authenticated worker gateway]
+    Rivet[Rivet Sandbox Agent managed service]
+    Tool[Discovery + crawler + audit binaries]
+    Desktop[Real Linux desktop + Chromium]
+    Build[React compiler + Playwright + Storybook]
+  end
+  subgraph External[EXTERNAL AUTHORITIES]
+    Port[Port catalog/governance]
+    R2[Cloudflare R2 objects]
+    GH[GitHub source and CI]
+    Vercel[Vercel previews and production]
+    Model[Authorized reasoning/image models]
+    Providers[Places, crawling, mail, booking]
+  end
+  UI --> Auth --> Domain
+  ChatGPT --> MCP
+  CLI --> MCP
+  MCP --> Auth
+  Cron --> WF
+  MCP --> Op
+  Op --> Domain
+  Op --> WF
+  WF --> Disc & Enr & Design
+  Disc & Enr & Design --> SprC
+  SprC --> Gateway
+  Gateway --> Rivet & Tool & Desktop & Build
+  Rivet --> Model
+  Disc & Enr --> Providers
+  PortC <--> Port
+  Domain <--> PortC
+  Asset <--> R2
+  Gateway --> Asset
+  Design --> Asset
+  Build --> GH
+  GH --> Vercel
+  Vercel --> Domain
