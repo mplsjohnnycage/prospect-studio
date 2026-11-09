@@ -56,6 +56,7 @@ Agents MUST NOT:
 6. Invent CommandKind / hash / role matrix outside P1 on the graph  
 7. Mark graph nodes `done` without exit-gate evidence  
 8. Host DuckDB (or treat it as infra SoT) — DuckDB is **embedded on Sprite workers only**; extracts land in R2, business state stays in Convex  
+9. Invent a second business FSM (UI labels, Rivet, Port, Surreal, etc.) — only `lifecycle/` §15.2 machine may advance `lifecycleStage`  
 
 ---
 

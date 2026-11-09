@@ -25,6 +25,7 @@ Live inspection of Fly Sprite `elifant-goldfish` + `prospect-studio`, then goldf
 | Visual QA | Playwright screenshots; no Jev product required |
 | Interactive demos | `POST /forms/{slug}` → `formSubmissions` |
 | DuckDB | **Embedded only** on Sprite discovery workers — never a hosted DB (no MotherDuck/managed DuckDB as SoT). Reads Overture GeoParquet → writes extract artifacts to R2; Convex stores refs/metadata only |
+| Lifecycle FSM | Zod machine in `lifecycle/` = PS-MASTER-3.1 §15.2 (18 stages). Convex sole authority. Loop-1 ends at `Handoff`. UI `domain.ts` is display-only |
 
 ## Sprite inventory (rechecked 2026-11-09)
 

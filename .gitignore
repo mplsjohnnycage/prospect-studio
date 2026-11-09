@@ -48,3 +48,7 @@ deploy/pc-node/*.env
 # exec graph
 graph/node_modules/
 graph/dist/
+
+# lifecycle FSM
+lifecycle/node_modules/
+lifecycle/dist/
