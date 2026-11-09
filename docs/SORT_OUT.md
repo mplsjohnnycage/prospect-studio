@@ -49,7 +49,7 @@ Live inspection of Fly Sprite `elifant-goldfish` + `prospect-studio`, then goldf
 ## Still open (not inventable here)
 
 - AgentOS sidecar hangs under `npm run verify` on the Sprite (phase0 documented; needs CI green before merge).
-- CommandKind closed union + per-kind validators (P1).
+- CommandKind closed union + per-kind validators (P1) — inventory: [`docs/P1_CONTRACT_SURFACE.md`](P1_CONTRACT_SURFACE.md).
 - Canonical JSON/hash profile with golden vector (P1).
 - Role/scope matrix and approval identity proof (P1).
 - Scoring rule v1 weights/thresholds (P5/P6).
