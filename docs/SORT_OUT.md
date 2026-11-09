@@ -16,7 +16,7 @@ Live inspection of Fly Sprite `elifant-goldfish` + `prospect-studio`, then goldf
 |---|---|
 | Spec authority | `docs/spec/PROSPECT_STUDIO_MASTER_SPEC_v3_2026-11-09.md` (PS-MASTER-3.1) |
 | Code base of truth | GitHub `main` @ `db3056d` (matches READY Vercel prod) |
-| Integration branch | `fix/phase0-prospect-reconcile-20261107` @ `21c4e8b` on Sprite `prospect-studio` worktree `/home/sprite/wt-prospect-phase0` |
+| Integration branch | `fix/phase0-prospect-reconcile-20261107` @ `d854744` on Sprite `prospect-studio` worktree `/home/sprite/wt-prospect-phase0` |
 | Convex targets | prod `rightful-elk-426` (do not write without explicit OK); dev `gregarious-ibis-329` |
 | Workflow / R2 | Adopt `@convex-dev/workflow@0.4.10` and `@convex-dev/r2@0.10.4` from phase0 |
 | Unauthenticated `POST /compile` | **Reject** — present in dirty `rivet-spike-attach` and hardening trees; violates human gate |
@@ -31,7 +31,7 @@ Live inspection of Fly Sprite `elifant-goldfish` + `prospect-studio`, then goldf
 
 | Path | Branch / SHA | Action |
 |---|---|---|
-| `/home/sprite/wt-prospect-phase0` | `fix/phase0-prospect-reconcile-20261107` / `21c4e8b` | **Use this** |
+| `/home/sprite/wt-prospect-phase0` | `fix/phase0-prospect-reconcile-20261107` / `d854744` | **Use this** |
 | `/home/sprite/prospect-studio` | `rivet-spike-attach` / `159aa6e` + dirty compile queue | Preserve; do not merge over main |
 | `/home/sprite/prospect-studio-build-hardening` | `fix/build-dependency-hygiene-20261102` / `edf0780` + dirty | Cherry-pick only after audit; never deploy wholesale |
 
@@ -57,5 +57,7 @@ Live inspection of Fly Sprite `elifant-goldfish` + `prospect-studio`, then goldf
 ## Next executable step
 
 On Sprite `prospect-studio`, continue from `wt-prospect-phase0`: finish AgentOS verify gate, open/merge the phase0 PR when CI is green, then start P1 contracts against `gregarious-ibis-329` only.
+
+**Graph:** P0 `done` → P1 `ready`.
 
 **P0 gap map:** [`docs/P0_GAP_MATRIX.md`](P0_GAP_MATRIX.md) (PS-MASTER vs phase0; top Loop-1 blockers).
