@@ -14,7 +14,7 @@ If an instruction from chat, an old PR, or a dirty worktree conflicts with `AGEN
 | Role | Value |
 |---|---|
 | Prod-matching base | GitHub `main` @ `db3056d` |
-| Integration branch | `fix/phase0-prospect-reconcile-20261107` @ `21c4e8b` |
+| Integration branch | `fix/phase0-prospect-reconcile-20261107` @ `cd8def9` |
 | Active PR | **#35 only** (draft until CI green) |
 | Sprite worktree | `/home/sprite/wt-prospect-phase0` on Sprite `prospect-studio` |
 | Convex write target | **dev only** `gregarious-ibis-329` |
@@ -39,9 +39,9 @@ Use **only** `wt-prospect-phase0`. Everything else is archive/spike:
 | Path | Branch | Rule |
 |---|---|---|
 | `wt-prospect-phase0` | phase0 | **ONLY active lane** |
-| `prospect-studio` | `rivet-spike-attach` + dirty `/compile` | freeze; never merge wholesale |
+| `prospect-studio` | `rivet-spike-attach` + dirty `/compile` | freeze; never merge wholesale; `QUARANTINE.md` |
 | `prospect-studio-build-hardening` | hygiene + dirty | freeze; cherry-pick only after audit |
-| all other `prospect-studio-*` / `wt-*` | various | freeze; do not continue |
+| all other `prospect-studio-*` / `wt-*` | various | freeze; **all** have `QUARANTINE.md` as of 2026-11-09 |
 
 ---
 
